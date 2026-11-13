@@ -71,7 +71,16 @@ svg text{fill:var(--muted);font:11px var(--body)}
 .lst .a{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .lst .a small{color:var(--muted)}
 .lst .t{font:600 14px var(--mono);font-variant-numeric:tabular-nums}
-#tal li{grid-template-columns:48px 1fr auto}
+#tal li{grid-template-columns:48px 1fr auto;cursor:pointer}
+#tal li.has::after{content:"›";grid-column:3;display:none}
+#tal li .det{grid-column:1/-1;margin-top:8px;padding:8px 10px;background:var(--soft);border-radius:8px}
+#tal li .det div{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:2px 0}
+#tal li .det div span:first-child{color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#tal li .det .q{color:var(--muted);font-family:var(--mono)}
+#tal li .det .vv{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+#tal li.open .car{color:var(--accent)}
+.car{transition:transform .15s;display:inline-block;color:var(--muted)}
+#tal li.open .car{transform:rotate(90deg)}
 .empty{color:var(--muted);font-size:13px}
 #setup .fld{display:flex;flex-direction:column;gap:8px;margin-top:10px}
 #setup p{color:var(--muted);font-size:14px;line-height:1.45;margin:0}
@@ -279,9 +288,24 @@ function render(d) {
   const tal = arr(d.taloes);
   if (tal.length) {
     $("talCard").style.display = "block";
-    $("tal").innerHTML = tal.map(t =>
-      `<li><span class="n">${t.hora}</span><span class="a">nº ${t.doc} <small>· ${t.artigos} art.</small></span><span class="t">${eur.format(t.total)}</span></li>`
-    ).join("");
+    $("tal").innerHTML = tal.map((t, i) => {
+      const linhas = arr(t.linhas);
+      const temDet = linhas.length > 0;
+      const det = temDet ? `<div class="det" hidden>` + linhas.map(l =>
+        `<div><span>${esc(l.artigo)}</span><span class="q">×${l.qtd}</span><span class="vv">${eur.format(l.total)}</span></div>`
+      ).join("") + `</div>` : "";
+      const seta = temDet ? `<span class="car">›</span> ` : "";
+      return `<li data-i="${i}"><span class="n">${t.hora}</span><span class="a">${seta}nº ${t.doc} <small>· ${t.artigos} art.</small></span><span class="t">${eur.format(t.total)}</span>${det}</li>`;
+    }).join("");
+    $("tal").querySelectorAll("li").forEach(li => {
+      li.onclick = () => {
+        const det = li.querySelector(".det");
+        if (!det) return;
+        const open = !det.hidden;
+        det.hidden = open;
+        li.classList.toggle("open", !open);
+      };
+    });
   } else { $("talCard").style.display = "none"; }
 
   heatmap(arr(d.heatmap));
