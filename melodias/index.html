@@ -70,7 +70,7 @@
 
 <header>
   <h1>Melodias do Mar</h1>
-  <span class="upd" id="upd"></span>
+  <button class="ghost" id="refresh" style="width:auto;margin:0;padding:6px 10px;font-size:12px">↻ <span id="upd">atualizar</span></button>
 </header>
 
 <section id="setup" class="card">
@@ -173,7 +173,12 @@ function render(d) {
   $("nv").textContent = `${h.vendas || 0} vendas · talão médio ${eur.format(tm)}`;
 
   const upd = d.atualizado ? new Date(d.atualizado.replace(" ", "T")) : null;
-  $("upd").textContent = upd ? "atualizado " + upd.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" }) : "";
+  if (upd) {
+    const min = Math.max(0, Math.round((Date.now() - upd.getTime()) / 60000));
+    const hh = upd.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
+    $("upd").textContent = hh + (min <= 1 ? " · agora" : " · há " + min + " min");
+    $("refresh").style.color = min > 15 ? "var(--down)" : "";
+  }
 
   // Comparar com o mesmo ponto do dia quando existir; senão com o dia inteiro
   const temParcial = c.ontem_ate_agora !== undefined;
@@ -254,10 +259,13 @@ $("save").onclick = () => {
   if (!v) return;
   setTok(v); $("tok").value = ""; load();
 };
+$("refresh").onclick = () => { $("upd").textContent = "a atualizar…"; load(); };
 $("reset").onclick = () => { delTok(); showSetup(); };
 
 load();
-setInterval(load, 120000);
+setInterval(load, 60000);
+window.addEventListener("pageshow", load);
+window.addEventListener("focus", load);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
 </script>
 </body>
