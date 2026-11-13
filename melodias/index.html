@@ -90,6 +90,14 @@ svg text{fill:var(--muted);font:11px var(--body)}
 .extremos .lab{color:var(--muted)}
 .extremos .val{text-align:right}
 .extremos .val b{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.fam-row{padding:8px 0;border-top:1px solid var(--line)}
+.fam-row:first-child{border-top:0}
+.fam-top{display:flex;justify-content:space-between;gap:10px;font-size:14px;align-items:baseline}
+.fam-top .nome{font-weight:500}
+.fam-top .v{font:600 14px var(--mono);font-variant-numeric:tabular-nums}
+.fam-bar{height:7px;border-radius:4px;background:var(--soft);margin-top:5px;overflow:hidden}
+.fam-bar span{display:block;height:100%;background:var(--accent);border-radius:4px}
+.fam-pct{font-size:11px;color:var(--muted);margin-top:2px}
 .busca{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-bottom:10px}
 .busca label{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
 .busca input,.busca select{width:auto;padding:8px 9px;font:14px var(--body)}
@@ -180,6 +188,11 @@ footer{display:flex;justify-content:center;margin-top:4px}
     <h2>Horas fortes e fracas</h2>
     <div id="heat"></div>
     <div class="note">Média por hora e dia da semana (últimas 8 semanas). Vermelho = horas mortas, verde = horas de mais vendas.</div>
+  </section>
+
+  <section class="card" id="famCard" style="display:none">
+    <h2>Top famílias (hoje)</h2>
+    <div id="fam"></div>
   </section>
 
   <section class="card">
@@ -370,6 +383,18 @@ function render(d) {
   heatmap(arr(d.heatmap));
   barsDias(arr(d.dias), h.data);
   barsHoras(arr(d.horas));
+
+  const fam = arr(d.familias);
+  if (fam.length) {
+    $("famCard").style.display = "block";
+    const totF = fam.reduce((s, f) => s + (f.total || 0), 0) || 1;
+    const maxF = Math.max(...fam.map(f => f.total)) || 1;
+    $("fam").innerHTML = fam.map(f => {
+      const pct = Math.round(f.total / totF * 100);
+      const w = Math.round(f.total / maxF * 100);
+      return `<div class="fam-row"><div class="fam-top"><span class="nome">${esc(f.familia)}</span><span class="v">${eur.format(f.total)}</span></div><div class="fam-bar"><span style="width:${w}%"></span></div><div class="fam-pct">${pct}% das vendas · ${f.qtd} un.</div></div>`;
+    }).join("");
+  } else { $("famCard").style.display = "none"; }
 
   let ex = "";
   if (d.mais_caro) ex += `<div><span class="lab">Mais caro vendido</span><span class="val">${esc(d.mais_caro.artigo)} · <b>${eur.format(d.mais_caro.preco)}</b></span></div>`;
