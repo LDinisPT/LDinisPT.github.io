@@ -259,6 +259,30 @@ async function load() {
   }
 }
 
+function conta(alvo) {
+  // segundos ate ao alvo -> "M:SS" ou "já"
+  const s = Math.round((alvo.getTime() - Date.now()) / 1000);
+  if (s <= 0) return "já";
+  const m = Math.floor(s / 60), ss = s % 60;
+  return m + ":" + String(ss).padStart(2, "0");
+}
+function tickStatus() {
+  const upd = window._upd;
+  if (!upd) return;
+  const hora = t => t.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
+  const min = Math.max(0, Math.round((Date.now() - upd.getTime()) / 60000));
+  $("upd").textContent = hora(upd) + (min <= 1 ? " · agora" : " · há " + min + " min");
+  $("refresh").classList.toggle("stale", min > 15);
+  const proxR = new Date(upd.getTime() + 5 * 60000);
+  let txt = `Resumo: próxima em <b>${conta(proxR)}</b>`;
+  if (window._talTs) {
+    const proxT = new Date(window._talTs.getTime() + 15 * 60000);
+    txt += ` · Talões: próxima em <b>${conta(proxT)}</b>`;
+  }
+  $("status").innerHTML = txt;
+  $("status").classList.toggle("stale", min > 15);
+}
+
 function delta(cur, ref) {
   if (!ref) return { txt: "", cls: "flat" };
   const p = (cur - ref) / ref * 100;
@@ -299,21 +323,9 @@ function render(d) {
   $("mg").textContent = (mg && (mg.lucro || mg.pct))
     ? `Margem ${eur.format(mg.lucro)} · ${String(mg.pct).replace(".", ",")}%` : "";
 
-  const upd = d.atualizado ? new Date(d.atualizado.replace(" ", "T")) : null;
-  if (upd) {
-    const hora = t => t.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
-    const min = Math.max(0, Math.round((Date.now() - upd.getTime()) / 60000));
-    const hh = hora(upd);
-    $("upd").textContent = hh + (min <= 1 ? " · agora" : " · há " + min + " min");
-    $("refresh").classList.toggle("stale", min > 15);
-    // proxima atualizacao: o PC envia o resumo de 5 em 5 min
-    const prox = new Date(upd.getTime() + 5 * 60000);
-    const faltam = Math.round((prox.getTime() - Date.now()) / 60000);
-    const quando = faltam <= 0 ? "a qualquer momento" : "~" + hora(prox) + " (em " + faltam + " min)";
-    $("status").innerHTML = `Atualizado às <b>${hh}</b> · há ${min} min · próxima ${quando}`
-      + ` <span style="opacity:.7">· detalhe dos talões a cada 15 min</span>`;
-    $("status").classList.toggle("stale", min > 15);
-  }
+  window._upd = d.atualizado ? new Date(d.atualizado.replace(" ", "T")) : null;
+  window._talTs = d.taloes_atualizado ? new Date(d.taloes_atualizado.replace(" ", "T")) : null;
+  tickStatus();
 
   const parcial = c.ontem_ate_agora !== undefined;
   const r1 = parcial ? c.ontem_ate_agora : c.ontem;
@@ -505,6 +517,7 @@ $("refresh").onclick = () => { $("upd").textContent = "a atualizar…"; load(); 
 
 load();
 setInterval(load, 60000);
+setInterval(tickStatus, 1000);
 window.addEventListener("pageshow", load);
 window.addEventListener("focus", load);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
