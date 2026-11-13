@@ -82,6 +82,18 @@ svg text{fill:var(--muted);font:11px var(--body)}
 .car{transition:transform .15s;display:inline-block;color:var(--muted)}
 #tal li.open .car{transform:rotate(90deg)}
 .empty{color:var(--muted);font-size:13px}
+.busca{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-bottom:10px}
+.busca label{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.busca input,.busca select{width:auto;padding:8px 9px;font:14px var(--body)}
+.busca input[type=date]{min-width:140px}
+#bLst li{grid-template-columns:48px 1fr auto;cursor:pointer}
+#bLst li .det{grid-column:1/-1;margin-top:8px;padding:8px 10px;background:var(--soft);border-radius:8px}
+#bLst li .det div{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:2px 0}
+#bLst li .det div span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#bLst li .det .q{color:var(--muted);font-family:var(--mono)}
+#bLst li .det .vv{font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+#bLst .car,#tal .car{transition:transform .15s;display:inline-block;color:var(--muted)}
+#bLst li.open .car,#tal li.open .car{transform:rotate(90deg);color:var(--accent)}
 #setup .fld{display:flex;flex-direction:column;gap:8px;margin-top:10px}
 #setup p{color:var(--muted);font-size:14px;line-height:1.45;margin:0}
 input{width:100%;padding:11px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:15px var(--body)}
@@ -166,6 +178,18 @@ footer{display:flex;justify-content:center;margin-top:4px}
   </section>
 
   <section class="card">
+    <h2>Procurar talões</h2>
+    <div class="busca">
+      <label>Dia <input type="date" id="bDia"></label>
+      <label>Das <select id="bDe"></select></label>
+      <label>às <select id="bAte"></select>h</label>
+      <button class="btn primary" id="bGo">Procurar</button>
+    </div>
+    <div class="note" id="bMsg"></div>
+    <ul class="lst" id="bLst"></ul>
+  </section>
+
+  <section class="card">
     <h2>Top artigos (hoje)</h2>
     <ul class="lst" id="top"></ul>
   </section>
@@ -238,6 +262,27 @@ function delta(cur, ref) {
 }
 function esc(s) { return String(s).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch])); }
 
+function renderTaloes(list, ulId) {
+  const ul = $(ulId);
+  ul.innerHTML = list.map(t => {
+    const linhas = arr(t.linhas);
+    const temDet = linhas.length > 0;
+    const det = temDet ? `<div class="det" hidden>` + linhas.map(l =>
+      `<div><span>${esc(l.artigo)}</span><span class="q">×${l.qtd}</span><span class="vv">${eur.format(l.total)}</span></div>`
+    ).join("") + `</div>` : "";
+    const seta = temDet ? `<span class="car">›</span> ` : "";
+    return `<li><span class="n">${t.hora}</span><span class="a">${seta}nº ${t.doc} <small>· ${t.artigos} art.</small></span><span class="t">${eur.format(t.total)}</span>${det}</li>`;
+  }).join("");
+  ul.querySelectorAll("li").forEach(li => {
+    li.onclick = () => {
+      const det = li.querySelector(".det");
+      if (!det) return;
+      det.hidden = !det.hidden;
+      li.classList.toggle("open", !det.hidden);
+    };
+  });
+}
+
 function render(d) {
   const h = d.hoje || {};
   const c = d.comparacao || {};
@@ -288,24 +333,7 @@ function render(d) {
   const tal = arr(d.taloes);
   if (tal.length) {
     $("talCard").style.display = "block";
-    $("tal").innerHTML = tal.map((t, i) => {
-      const linhas = arr(t.linhas);
-      const temDet = linhas.length > 0;
-      const det = temDet ? `<div class="det" hidden>` + linhas.map(l =>
-        `<div><span>${esc(l.artigo)}</span><span class="q">×${l.qtd}</span><span class="vv">${eur.format(l.total)}</span></div>`
-      ).join("") + `</div>` : "";
-      const seta = temDet ? `<span class="car">›</span> ` : "";
-      return `<li data-i="${i}"><span class="n">${t.hora}</span><span class="a">${seta}nº ${t.doc} <small>· ${t.artigos} art.</small></span><span class="t">${eur.format(t.total)}</span>${det}</li>`;
-    }).join("");
-    $("tal").querySelectorAll("li").forEach(li => {
-      li.onclick = () => {
-        const det = li.querySelector(".det");
-        if (!det) return;
-        const open = !det.hidden;
-        det.hidden = open;
-        li.classList.toggle("open", !open);
-      };
-    });
+    renderTaloes(tal, "tal");
   } else { $("talCard").style.display = "none"; }
 
   heatmap(arr(d.heatmap));
@@ -393,6 +421,49 @@ function heatmap(cells) {
   }
   $("heat").innerHTML = s + `</svg>`;
 }
+
+// Procurar talões por dia e hora
+(function initBusca() {
+  const hoje = new Date();
+  const iso = hoje.toISOString().slice(0, 10);
+  $("bDia").value = iso; $("bDia").max = iso;
+  let de = "", ate = "";
+  for (let hh = 6; hh <= 23; hh++) {
+    de += `<option value="${hh}">${hh}h</option>`;
+    ate += `<option value="${hh}"${hh === 23 ? " selected" : ""}>${hh}h</option>`;
+  }
+  $("bDe").innerHTML = de; $("bAte").innerHTML = ate;
+})();
+
+async function buscaTaloes() {
+  const tok = getTok();
+  if (!tok) return;
+  const dia = $("bDia").value;
+  const de = +$("bDe").value, ate = +$("bAte").value;
+  if (!dia) return;
+  $("bMsg").textContent = "A procurar…"; $("bLst").innerHTML = "";
+  try {
+    const r = await fetch(`https://api.github.com/repos/${REPO}/contents/taloes/${dia}.json?t=${Date.now()}`, {
+      headers: { Authorization: `Bearer ${tok}`, Accept: "application/vnd.github.raw+json" },
+      cache: "no-store"
+    });
+    if (r.status === 404) { $("bMsg").textContent = "Sem talões guardados para esse dia."; return; }
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const data = await r.json();
+    const todos = arr(data.taloes);
+    const filt = todos.filter(t => {
+      const h = parseInt(t.hora.slice(0, 2), 10);
+      return h >= de && h <= ate;
+    });
+    if (!filt.length) { $("bMsg").textContent = "Nenhum talão entre as " + de + "h e as " + ate + "h nesse dia."; return; }
+    const soma = filt.reduce((s, t) => s + (t.total || 0), 0);
+    $("bMsg").textContent = `${filt.length} talões · ${eur.format(soma)} entre as ${de}h e as ${ate}h`;
+    renderTaloes(filt, "bLst");
+  } catch (e) {
+    $("bMsg").textContent = "Não foi possível procurar. (" + e.message + ")";
+  }
+}
+$("bGo").onclick = buscaTaloes;
 
 $("save").onclick = () => { const v = $("tok").value.trim(); if (!v) return; setTok(v); $("tok").value = ""; load(); };
 $("reset").onclick = () => { delTok(); showSetup(); };
