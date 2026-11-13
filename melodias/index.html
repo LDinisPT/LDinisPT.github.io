@@ -51,6 +51,7 @@
   .top { list-style: none; padding: 0; margin: 0; }
   .top li { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
   .top li:first-child { border-top: 0; }
+  #tal li { grid-template-columns: 46px 1fr auto; }
   .top .n { color: var(--muted); font-size: 12px; }
   .top .a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .top .a small { color: var(--muted); }
@@ -124,6 +125,11 @@
     <h2>Horas fortes e fracas</h2>
     <div id="heat"></div>
     <div class="note">Média por hora e dia da semana (últimas 8 semanas). Mais aceso = mais vendas.</div>
+  </section>
+
+  <section class="card" id="talCard" style="display:none">
+    <h2>Últimos talões</h2>
+    <ul class="top" id="tal"></ul>
   </section>
 
   <section class="card">
@@ -238,6 +244,15 @@ function render(d) {
     $("m3").textContent = eur0.format(m.previsao || 0);
     $("mesNote").textContent = `Mês passado foi ${eur0.format(m.mes_passado_total || 0)} no total. "Mês passado" aqui é só até ao dia ${m.dia}.`;
   }
+
+  // últimos talões
+  const tal = arr(d.taloes);
+  if (tal.length) {
+    $("talCard").style.display = "block";
+    $("tal").innerHTML = tal.map(t =>
+      `<li><span class="n">${t.hora}</span><span class="a">nº ${t.doc} <small>· ${t.artigos} art.</small></span><span class="t">${eur.format(t.total)}</span></li>`
+    ).join("");
+  } else { $("talCard").style.display = "none"; }
 
   // heatmap
   heatmap(arr(d.heatmap));
