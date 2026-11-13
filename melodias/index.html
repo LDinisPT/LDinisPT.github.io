@@ -86,6 +86,19 @@
     <div class="label">Vendas de hoje</div>
     <div class="total" id="tot">—</div>
     <div class="sub" id="nv"></div>
+    <div class="sub" id="mg" style="margin-top:6px"></div>
+  </section>
+
+  <section class="card" id="mesCard" style="display:none">
+    <h2>Mês em curso</h2>
+    <div class="total" id="mesTot" style="font-size:30px;font-weight:700;font-variant-numeric:tabular-nums"></div>
+    <div class="sub" id="mesSub"></div>
+    <div class="comp" style="margin-top:12px">
+      <div class="c"><div class="label">Mês passado</div><div class="v" id="m1"></div><div class="d" id="md1"></div></div>
+      <div class="c"><div class="label">Ano passado</div><div class="v" id="m2"></div><div class="d" id="md2"></div></div>
+      <div class="c"><div class="label">Previsão fecho</div><div class="v" id="m3"></div></div>
+    </div>
+    <div class="note" id="mesNote"></div>
   </section>
 
   <section class="card">
@@ -105,6 +118,12 @@
   <section class="card">
     <h2>Vendas por hora (hoje)</h2>
     <div id="chHoras"></div>
+  </section>
+
+  <section class="card" id="heatCard" style="display:none">
+    <h2>Horas fortes e fracas</h2>
+    <div id="heat"></div>
+    <div class="note">Média por hora e dia da semana (últimas 8 semanas). Mais aceso = mais vendas.</div>
   </section>
 
   <section class="card">
@@ -199,6 +218,30 @@ function render(d) {
     ? "Comparado com a mesma hora do dia. Dia inteiro: ontem " + eur0.format(c.ontem || 0) + ", há 1 semana " + eur0.format(c.semana_passada || 0) + "."
     : "Comparado com o total desses dias inteiros.";
 
+  // margem
+  const mg = d.margem;
+  if (mg && (mg.lucro || mg.pct)) {
+    $("mg").textContent = `Margem ${eur.format(mg.lucro)} · ${String(mg.pct).replace(".", ",")}%`;
+  } else { $("mg").textContent = ""; }
+
+  // mês
+  const m = d.mes;
+  if (m && m.atual !== undefined) {
+    $("mesCard").style.display = "block";
+    $("mesTot").textContent = eur.format(m.atual);
+    $("mesSub").textContent = `dia ${m.dia} de ${m.dias_mes}`;
+    const dm1 = delta(m.atual, m.mes_passado_ate);
+    $("m1").textContent = eur0.format(m.mes_passado_ate || 0);
+    $("md1").textContent = dm1.txt; $("md1").className = "d " + dm1.cls;
+    $("m2").textContent = eur0.format(m.ano_passado_total || 0);
+    $("md2").textContent = "mês inteiro"; $("md2").className = "d flat";
+    $("m3").textContent = eur0.format(m.previsao || 0);
+    $("mesNote").textContent = `Mês passado foi ${eur0.format(m.mes_passado_total || 0)} no total. "Mês passado" aqui é só até ao dia ${m.dia}.`;
+  }
+
+  // heatmap
+  heatmap(arr(d.heatmap));
+
   barsDias(arr(d.dias), h.data);
   barsHoras(arr(d.horas));
 
@@ -227,6 +270,47 @@ function barsDias(dias, hoje) {
   });
   s += `</svg>`;
   $("chDias").innerHTML = s;
+}
+
+function heatmap(cells) {
+  if (!cells || !cells.length) { $("heatCard").style.display = "none"; return; }
+  $("heatCard").style.display = "block";
+  const nomes = ["S", "T", "Q", "Q", "S", "S", "D"];
+  const nomesF = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+  let hMin = 23, hMax = 0, max = 0;
+  cells.forEach(c => { if (c.vendas) { hMin = Math.min(hMin, c.h); hMax = Math.max(hMax, c.h); max = Math.max(max, c.total); } });
+  if (max === 0) { $("heatCard").style.display = "none"; return; }
+  hMin = Math.min(hMin, 9); hMax = Math.max(hMax, 20);
+  const grid = {};
+  cells.forEach(c => { grid[c.d + "_" + c.h] = c; });
+  const nh = hMax - hMin + 1;
+  const W = 520, lab = 30, top = 16;
+  const cw = (W - lab) / nh, ch = 20, gap = 2;
+  const H = top + 7 * (ch + gap);
+  let s = `<svg viewBox="0 0 ${W} ${H + 6}" width="100%" role="img">`;
+  for (let hr = hMin; hr <= hMax; hr++) {
+    if (hr % 2 === 0) {
+      const x = lab + (hr - hMin) * cw + cw / 2;
+      s += `<text x="${x}" y="11" text-anchor="middle">${hr}h</text>`;
+    }
+  }
+  for (let d = 0; d < 7; d++) {
+    const y = top + d * (ch + gap);
+    s += `<text x="0" y="${y + ch / 2 + 3}">${nomesF[d]}</text>`;
+    for (let hr = hMin; hr <= hMax; hr++) {
+      const x = lab + (hr - hMin) * cw;
+      const c = grid[d + "_" + hr];
+      const v = c ? c.total : 0;
+      const t = max > 0 ? v / max : 0;
+      // intensidade: do fundo ao accent
+      const op = v > 0 ? (0.12 + t * 0.88) : 0;
+      const fill = v > 0 ? `rgba(79,179,169,${op.toFixed(2)})` : "var(--bg)";
+      const tit = c ? `${nomesF[d]} ${hr}h: ${eur.format(v)} em média` : `${nomesF[d]} ${hr}h: sem vendas`;
+      s += `<rect x="${x + gap / 2}" y="${y}" width="${cw - gap}" height="${ch}" rx="3" fill="${fill}"><title>${tit}</title></rect>`;
+    }
+  }
+  s += `</svg>`;
+  $("heat").innerHTML = s;
 }
 
 function barsHoras(horas) {
