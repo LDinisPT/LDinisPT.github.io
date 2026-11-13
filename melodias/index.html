@@ -163,6 +163,8 @@ function delta(cur, ref) {
   return { txt: s, cls: p > 2 ? "up" : (p < -2 ? "down" : "flat") };
 }
 
+const arr = x => Array.isArray(x) ? x : (x ? [x] : []);
+
 function render(d) {
   const h = d.hoje || {};
   const c = d.comparacao || {};
@@ -192,10 +194,10 @@ function render(d) {
     ? "Comparado com a mesma hora do dia. Dia inteiro: ontem " + eur0.format(c.ontem || 0) + ", há 1 semana " + eur0.format(c.semana_passada || 0) + "."
     : "Comparado com o total desses dias inteiros.";
 
-  barsDias(d.dias || [], h.data);
-  barsHoras(d.horas || []);
+  barsDias(arr(d.dias), h.data);
+  barsHoras(arr(d.horas));
 
-  const top = d.top_artigos || [];
+  const top = arr(d.top_artigos);
   $("top").innerHTML = top.length ? top.map((t, i) =>
     `<li><span class="n">${i + 1}</span><span class="a">${esc(t.artigo)} <small>×${t.qtd}</small></span><span class="t">${eur.format(t.total)}</span></li>`
   ).join("") : `<li class="empty">Ainda sem vendas hoje.</li>`;
