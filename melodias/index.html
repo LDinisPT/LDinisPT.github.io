@@ -6,109 +6,133 @@
 <meta name="robots" content="noindex, nofollow">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Melodias">
-<meta name="theme-color" content="#0f1720">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Vendas">
+<meta name="theme-color" content="#f3f6f7">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" href="icon-192.png">
 <title>Melodias · Vendas</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
-  :root {
-    --bg: #0f1720;
-    --card: #17212c;
-    --line: #243241;
-    --text: #e8eef4;
-    --muted: #8a9bad;
-    --accent: #4fb3a9;
-    --accent-dim: #2c6b66;
-    --up: #5cc98a;
-    --down: #ef7b6b;
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; background: var(--bg); color: var(--text); }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    padding: calc(env(safe-area-inset-top) + 14px) 16px calc(env(safe-area-inset-bottom) + 24px);
-    max-width: 560px; margin: 0 auto;
-    -webkit-font-smoothing: antialiased;
-  }
-  header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 14px; }
-  header h1 { font-size: 17px; font-weight: 600; margin: 0; letter-spacing: .2px; }
-  header .upd { font-size: 12px; color: var(--muted); }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin-bottom: 12px; }
-  .label { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; }
-  .hero .total { font-size: 44px; font-weight: 700; letter-spacing: -1px; margin: 4px 0 2px; font-variant-numeric: tabular-nums; }
-  .hero .sub { font-size: 14px; color: var(--muted); }
-  .comp { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-  .comp .c { background: var(--bg); border-radius: 12px; padding: 10px; }
-  .comp .c .v { font-size: 15px; font-weight: 600; margin-top: 4px; font-variant-numeric: tabular-nums; }
-  .comp .c .d { font-size: 12px; margin-top: 2px; font-variant-numeric: tabular-nums; }
-  .up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--muted); }
-  .note { font-size: 11px; color: var(--muted); margin-top: 8px; }
-  h2 { font-size: 14px; font-weight: 600; margin: 0 0 12px; }
-  svg text { fill: var(--muted); font-size: 10px; }
-  .top { list-style: none; padding: 0; margin: 0; }
-  .top li { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: center; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; }
-  .top li:first-child { border-top: 0; }
-  #tal li { grid-template-columns: 46px 1fr auto; }
-  .top .n { color: var(--muted); font-size: 12px; }
-  .top .a { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .top .a small { color: var(--muted); }
-  .top .t { font-variant-numeric: tabular-nums; font-weight: 600; }
-  .empty { color: var(--muted); font-size: 13px; }
-  #setup { display: none; }
-  #setup p { color: var(--muted); font-size: 14px; line-height: 1.45; }
-  input { width: 100%; padding: 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--text); font-size: 15px; }
-  button { margin-top: 10px; width: 100%; padding: 12px; border-radius: 10px; border: 0; background: var(--accent); color: #062421; font-size: 15px; font-weight: 600; }
-  button.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); font-weight: 500; }
-  .err { color: var(--down); font-size: 13px; margin-top: 8px; }
-  footer { text-align: center; margin-top: 8px; }
-  footer button { width: auto; padding: 6px 12px; font-size: 12px; }
+:root{
+  --bg:#f3f6f7; --paper:#ffffff; --ink:#0f2a33; --muted:#5b7079; --line:#d6e0e3;
+  --accent:#0c6e7a; --accent-ink:#ffffff; --soft:#e3eff1;
+  --good:#1d7a45; --bad:#b4372b; --warn:#9a6a00;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0c181c; --paper:#132328; --ink:#e4eef0; --muted:#8fa5ac; --line:#24393f;
+  --accent:#4fb3bf; --accent-ink:#06191c; --soft:#18323a;
+  --good:#5cc98a; --bad:#f08072; --warn:#e2b34a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0c181c; --paper:#132328; --ink:#e4eef0; --muted:#8fa5ac; --line:#24393f;
+  --accent:#4fb3bf; --accent-ink:#06191c; --soft:#18323a;
+  --good:#5cc98a; --bad:#f08072; --warn:#e2b34a; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-top:calc(env(safe-area-inset-top,0px) + 20px);padding-bottom:48px;-webkit-font-smoothing:antialiased}
+.wrap{max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+header{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:12px}
+.brand small{display:block;font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.brand h1{font-family:var(--display);font-size:clamp(24px,5vw,32px);margin:2px 0 0;line-height:1.1}
+.brand .co{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.hdr-r{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--paper);color:var(--ink);font:600 13px var(--body);padding:8px 12px;border-radius:8px;cursor:pointer;white-space:nowrap}
+.btn:hover{border-color:var(--accent)}
+.btn.theme::before{content:"";display:inline-block;width:12px;height:12px;margin-right:6px;vertical-align:-1px;border-radius:50%;border:2px solid currentColor;background:linear-gradient(90deg,currentColor 50%,transparent 50%)}
+.stale{color:var(--bad);border-color:var(--bad)}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px}
+.card h2{font-family:var(--display);font-size:17px;margin:0 0 12px}
+.summary{background:var(--ink);color:var(--paper);border-radius:12px;padding:18px}
+.summary .k{font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.75}
+.summary .v{font:600 clamp(30px,9vw,44px) var(--mono);font-variant-numeric:tabular-nums;line-height:1.05;margin:4px 0 2px}
+.summary .sub{font-size:14px;opacity:.8}
+.summary .mg{font-size:14px;opacity:.95;margin-top:8px;font-family:var(--mono)}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.kpi{background:var(--soft);border-radius:10px;padding:11px 12px;min-width:0}
+.kpi .k{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.kpi .v{font:600 16px var(--mono);font-variant-numeric:tabular-nums;margin-top:3px}
+.kpi .d{font:600 12px var(--mono);margin-top:2px;font-variant-numeric:tabular-nums}
+.pos{color:var(--good)} .neg{color:var(--bad)} .flat{color:var(--muted)}
+.note{font-size:12.5px;color:var(--muted);margin-top:10px}
+.mesTot{font:600 28px var(--mono);font-variant-numeric:tabular-nums}
+.mesSub{font-size:13px;color:var(--muted);margin:2px 0 12px}
+svg text{fill:var(--muted);font:11px var(--body)}
+.lst{list-style:none;padding:0;margin:0}
+.lst li{display:grid;grid-template-columns:24px 1fr auto;gap:8px;align-items:center;padding:9px 0;border-top:1px solid var(--line);font-size:14px}
+.lst li:first-child{border-top:0}
+.lst .n{color:var(--muted);font:600 12px var(--mono)}
+.lst .a{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lst .a small{color:var(--muted)}
+.lst .t{font:600 14px var(--mono);font-variant-numeric:tabular-nums}
+#tal li{grid-template-columns:48px 1fr auto}
+.empty{color:var(--muted);font-size:13px}
+#setup .fld{display:flex;flex-direction:column;gap:8px;margin-top:10px}
+#setup p{color:var(--muted);font-size:14px;line-height:1.45;margin:0}
+input{width:100%;padding:11px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:15px var(--body)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.err{color:var(--bad);font-size:13px}
+footer{display:flex;justify-content:center;margin-top:4px}
 </style>
 </head>
 <body>
+<div class="wrap">
 
 <header>
-  <h1>Melodias do Mar</h1>
-  <button class="ghost" id="refresh" style="width:auto;margin:0;padding:6px 10px;font-size:12px">↻ <span id="upd">atualizar</span></button>
+  <div class="brand">
+    <small>Melodias do Mar</small>
+    <h1>Vendas</h1>
+    <span class="co">C.C. E.Leclerc, Loja 4 · Figueira da Foz</span>
+  </div>
+  <div class="hdr-r">
+    <button class="btn" id="refresh">↻ <span id="upd">atualizar</span></button>
+    <button class="btn theme" id="theme">Tema</button>
+  </div>
 </header>
 
-<section id="setup" class="card">
+<section id="setup" class="card" style="display:none">
   <h2>Configurar acesso</h2>
   <p>Cole a chave de leitura do GitHub (começa por <b>github_pat_</b>). Fica guardada só neste telemóvel.</p>
-  <input id="tok" type="password" autocomplete="off" placeholder="github_pat_...">
-  <button id="save">Guardar</button>
-  <div class="err" id="setupErr"></div>
+  <div class="fld">
+    <input id="tok" type="password" autocomplete="off" placeholder="github_pat_...">
+    <button class="btn primary" id="save">Guardar</button>
+    <div class="err" id="setupErr"></div>
+  </div>
 </section>
 
-<main id="app" style="display:none">
-  <section class="card hero">
-    <div class="label">Vendas de hoje</div>
-    <div class="total" id="tot">—</div>
+<main id="app" style="display:none;display:none">
+  <section class="summary">
+    <div class="k">Vendas de hoje</div>
+    <div class="v" id="tot">—</div>
     <div class="sub" id="nv"></div>
-    <div class="sub" id="mg" style="margin-top:6px"></div>
+    <div class="mg" id="mg"></div>
+  </section>
+
+  <section class="card">
+    <div class="kpis">
+      <div class="kpi"><div class="k">Ontem</div><div class="v" id="c1"></div><div class="d" id="d1"></div></div>
+      <div class="kpi"><div class="k">Há 7 dias</div><div class="v" id="c2"></div><div class="d" id="d2"></div></div>
+      <div class="kpi"><div class="k">Média 7d</div><div class="v" id="c3"></div><div class="d" id="d3"></div></div>
+    </div>
+    <div class="note" id="compNote"></div>
   </section>
 
   <section class="card" id="mesCard" style="display:none">
     <h2>Mês em curso</h2>
-    <div class="total" id="mesTot" style="font-size:30px;font-weight:700;font-variant-numeric:tabular-nums"></div>
-    <div class="sub" id="mesSub"></div>
-    <div class="comp" style="margin-top:12px">
-      <div class="c"><div class="label">Mês passado</div><div class="v" id="m1"></div><div class="d" id="md1"></div></div>
-      <div class="c"><div class="label">Ano passado</div><div class="v" id="m2"></div><div class="d" id="md2"></div></div>
-      <div class="c"><div class="label">Previsão fecho</div><div class="v" id="m3"></div></div>
+    <div class="mesTot" id="mesTot"></div>
+    <div class="mesSub" id="mesSub"></div>
+    <div class="kpis">
+      <div class="kpi"><div class="k">Mês passado</div><div class="v" id="m1"></div><div class="d" id="md1"></div></div>
+      <div class="kpi"><div class="k">Ano passado</div><div class="v" id="m2"></div><div class="d" id="md2"></div></div>
+      <div class="kpi"><div class="k">Previsão fecho</div><div class="v" id="m3"></div></div>
     </div>
     <div class="note" id="mesNote"></div>
-  </section>
-
-  <section class="card">
-    <div class="comp">
-      <div class="c"><div class="label">Ontem</div><div class="v" id="c1"></div><div class="d" id="d1"></div></div>
-      <div class="c"><div class="label">Há 7 dias</div><div class="v" id="c2"></div><div class="d" id="d2"></div></div>
-      <div class="c"><div class="label">Média 7d</div><div class="v" id="c3"></div><div class="d" id="d3"></div></div>
-    </div>
-    <div class="note" id="compNote"></div>
   </section>
 
   <section class="card">
@@ -129,17 +153,19 @@
 
   <section class="card" id="talCard" style="display:none">
     <h2>Últimos talões</h2>
-    <ul class="top" id="tal"></ul>
+    <ul class="lst" id="tal"></ul>
   </section>
 
   <section class="card">
     <h2>Top artigos (hoje)</h2>
-    <ul class="top" id="top"></ul>
+    <ul class="lst" id="top"></ul>
   </section>
 
   <div class="err" id="err"></div>
-  <footer><button class="ghost" id="reset">Trocar chave</button></footer>
+  <footer><button class="btn" id="reset">Trocar chave</button></footer>
 </main>
+
+</div>
 
 <script>
 const REPO = "LDinisPT/melodias-dados";
@@ -148,11 +174,25 @@ const KEY = "melodias_token";
 const eur = new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" });
 const eur0 = new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR", maximumFractionDigits: 0 });
 const DIAS = ["dom", "seg", "ter", "qua", "qui", "sex", "sáb"];
+const $ = id => document.getElementById(id);
+const arr = x => Array.isArray(x) ? x : (x ? [x] : []);
 
 function getTok() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
 function setTok(v) { try { localStorage.setItem(KEY, v); } catch (e) {} }
 function delTok() { try { localStorage.removeItem(KEY); } catch (e) {} }
-const $ = id => document.getElementById(id);
+
+// tema
+try {
+  const th = localStorage.getItem("melodias_theme");
+  if (th) document.documentElement.setAttribute("data-theme", th);
+} catch (e) {}
+$("theme").onclick = () => {
+  const cur = document.documentElement.getAttribute("data-theme");
+  const dark = cur ? cur === "dark" : matchMedia("(prefers-color-scheme:dark)").matches;
+  const next = dark ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
+  try { localStorage.setItem("melodias_theme", next); } catch (e) {}
+};
 
 function showSetup(msg) {
   $("app").style.display = "none";
@@ -185,10 +225,9 @@ function delta(cur, ref) {
   if (!ref) return { txt: "", cls: "flat" };
   const p = (cur - ref) / ref * 100;
   const s = (p >= 0 ? "+" : "") + p.toFixed(0) + "%";
-  return { txt: s, cls: p > 2 ? "up" : (p < -2 ? "down" : "flat") };
+  return { txt: s, cls: p > 2 ? "pos" : (p < -2 ? "neg" : "flat") };
 }
-
-const arr = x => Array.isArray(x) ? x : (x ? [x] : []);
+function esc(s) { return String(s).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch])); }
 
 function render(d) {
   const h = d.hoje || {};
@@ -197,40 +236,32 @@ function render(d) {
   const tm = h.vendas ? (h.total / h.vendas) : 0;
   $("nv").textContent = `${h.vendas || 0} vendas · talão médio ${eur.format(tm)}`;
 
+  const mg = d.margem;
+  $("mg").textContent = (mg && (mg.lucro || mg.pct))
+    ? `Margem ${eur.format(mg.lucro)} · ${String(mg.pct).replace(".", ",")}%` : "";
+
   const upd = d.atualizado ? new Date(d.atualizado.replace(" ", "T")) : null;
   if (upd) {
     const min = Math.max(0, Math.round((Date.now() - upd.getTime()) / 60000));
     const hh = upd.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
     $("upd").textContent = hh + (min <= 1 ? " · agora" : " · há " + min + " min");
-    $("refresh").style.color = min > 15 ? "var(--down)" : "";
+    $("refresh").classList.toggle("stale", min > 15);
   }
 
-  // Comparar com o mesmo ponto do dia quando existir; senão com o dia inteiro
-  const temParcial = c.ontem_ate_agora !== undefined;
-  const ref1 = temParcial ? c.ontem_ate_agora : c.ontem;
-  const ref2 = temParcial ? c.semana_ate_agora : c.semana_passada;
-  const ref3 = temParcial ? c.media7_ate_agora : c.media7;
-  const set = (vid, did, ref, full) => {
+  const parcial = c.ontem_ate_agora !== undefined;
+  const r1 = parcial ? c.ontem_ate_agora : c.ontem;
+  const r2 = parcial ? c.semana_ate_agora : c.semana_passada;
+  const r3 = parcial ? c.media7_ate_agora : c.media7;
+  const set = (vid, did, ref) => {
     $(vid).textContent = eur0.format(ref || 0);
     const dl = delta(h.total || 0, ref);
-    $(did).textContent = dl.txt;
-    $(did).className = "d " + dl.cls;
-    if (full !== undefined && temParcial) $(did).title = "dia inteiro: " + eur.format(full);
+    $(did).textContent = dl.txt; $(did).className = "d " + dl.cls;
   };
-  set("c1", "d1", ref1, c.ontem);
-  set("c2", "d2", ref2, c.semana_passada);
-  set("c3", "d3", ref3, c.media7);
-  $("compNote").textContent = temParcial
-    ? "Comparado com a mesma hora do dia. Dia inteiro: ontem " + eur0.format(c.ontem || 0) + ", há 1 semana " + eur0.format(c.semana_passada || 0) + "."
-    : "Comparado com o total desses dias inteiros.";
+  set("c1", "d1", r1); set("c2", "d2", r2); set("c3", "d3", r3);
+  $("compNote").textContent = parcial
+    ? "Comparado com a mesma hora. Dia inteiro: ontem " + eur0.format(c.ontem || 0) + ", há 1 semana " + eur0.format(c.semana_passada || 0) + "."
+    : "Comparado com o total desses dias.";
 
-  // margem
-  const mg = d.margem;
-  if (mg && (mg.lucro || mg.pct)) {
-    $("mg").textContent = `Margem ${eur.format(mg.lucro)} · ${String(mg.pct).replace(".", ",")}%`;
-  } else { $("mg").textContent = ""; }
-
-  // mês
   const m = d.mes;
   if (m && m.atual !== undefined) {
     $("mesCard").style.display = "block";
@@ -242,10 +273,9 @@ function render(d) {
     $("m2").textContent = eur0.format(m.ano_passado_total || 0);
     $("md2").textContent = "mês inteiro"; $("md2").className = "d flat";
     $("m3").textContent = eur0.format(m.previsao || 0);
-    $("mesNote").textContent = `Mês passado foi ${eur0.format(m.mes_passado_total || 0)} no total. "Mês passado" aqui é só até ao dia ${m.dia}.`;
+    $("mesNote").textContent = `Mês passado foi ${eur0.format(m.mes_passado_total || 0)} no total. Aqui "mês passado" é só até ao dia ${m.dia}.`;
   }
 
-  // últimos talões
   const tal = arr(d.taloes);
   if (tal.length) {
     $("talCard").style.display = "block";
@@ -254,9 +284,7 @@ function render(d) {
     ).join("");
   } else { $("talCard").style.display = "none"; }
 
-  // heatmap
   heatmap(arr(d.heatmap));
-
   barsDias(arr(d.dias), h.data);
   barsHoras(arr(d.horas));
 
@@ -266,81 +294,38 @@ function render(d) {
   ).join("") : `<li class="empty">Ainda sem vendas hoje.</li>`;
 }
 
-function esc(s) { return String(s).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch])); }
-
 function barsDias(dias, hoje) {
-  const W = 520, H = 150, pad = 18;
+  const W = 840, H = 150, pad = 18;
   if (!dias.length) { $("chDias").innerHTML = `<div class="empty">Sem dados.</div>`; return; }
   const max = Math.max(...dias.map(x => x.total)) || 1;
   const bw = (W - 8) / dias.length;
-  let s = `<svg viewBox="0 0 ${W} ${H + pad}" width="100%" role="img">`;
+  let s = `<svg viewBox="0 0 ${W} ${H + pad}" width="100%" role="img" preserveAspectRatio="none">`;
   dias.forEach((x, i) => {
     const bh = Math.max(2, (x.total / max) * (H - 18));
-    const xx = 4 + i * bw + bw * 0.15, ww = bw * 0.7, yy = H - bh;
+    const xx = 4 + i * bw + bw * 0.18, ww = bw * 0.64, yy = H - bh;
     const isHoje = x.dia === hoje;
     const dt = new Date(x.dia + "T12:00:00");
-    s += `<rect x="${xx}" y="${yy}" width="${ww}" height="${bh}" rx="3" fill="${isHoje ? "var(--accent)" : "var(--accent-dim)"}"><title>${x.dia}: ${eur.format(x.total)} (${x.vendas} vendas)</title></rect>`;
-    if (isHoje || i % 2 === dias.length % 2) s += `<text x="${xx + ww / 2}" y="${yy - 4}" text-anchor="middle">${Math.round(x.total / 100) / 10}k</text>`;
+    const fill = isHoje ? "var(--accent)" : "color-mix(in srgb,var(--accent) 45%,var(--paper))";
+    s += `<rect x="${xx}" y="${yy}" width="${ww}" height="${bh}" rx="3" fill="${fill}"><title>${x.dia}: ${eur.format(x.total)} (${x.vendas} vendas)</title></rect>`;
+    if (isHoje || i % 2 === dias.length % 2) s += `<text x="${xx + ww / 2}" y="${yy - 4}" text-anchor="middle" style="font-size:10px">${Math.round(x.total / 100) / 10}k</text>`;
     s += `<text x="${xx + ww / 2}" y="${H + 13}" text-anchor="middle">${DIAS[dt.getDay()]}</text>`;
   });
-  s += `</svg>`;
-  $("chDias").innerHTML = s;
-}
-
-function heatmap(cells) {
-  if (!cells || !cells.length) { $("heatCard").style.display = "none"; return; }
-  $("heatCard").style.display = "block";
-  const nomes = ["S", "T", "Q", "Q", "S", "S", "D"];
-  const nomesF = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
-  let hMin = 23, hMax = 0, max = 0;
-  cells.forEach(c => { if (c.vendas) { hMin = Math.min(hMin, c.h); hMax = Math.max(hMax, c.h); max = Math.max(max, c.total); } });
-  if (max === 0) { $("heatCard").style.display = "none"; return; }
-  hMin = Math.min(hMin, 9); hMax = Math.max(hMax, 20);
-  const grid = {};
-  cells.forEach(c => { grid[c.d + "_" + c.h] = c; });
-  const nh = hMax - hMin + 1;
-  const W = 520, lab = 30, top = 16;
-  const cw = (W - lab) / nh, ch = 20, gap = 2;
-  const H = top + 7 * (ch + gap);
-  let s = `<svg viewBox="0 0 ${W} ${H + 6}" width="100%" role="img">`;
-  for (let hr = hMin; hr <= hMax; hr++) {
-    if (hr % 2 === 0) {
-      const x = lab + (hr - hMin) * cw + cw / 2;
-      s += `<text x="${x}" y="11" text-anchor="middle">${hr}h</text>`;
-    }
-  }
-  for (let d = 0; d < 7; d++) {
-    const y = top + d * (ch + gap);
-    s += `<text x="0" y="${y + ch / 2 + 3}">${nomesF[d]}</text>`;
-    for (let hr = hMin; hr <= hMax; hr++) {
-      const x = lab + (hr - hMin) * cw;
-      const c = grid[d + "_" + hr];
-      const v = c ? c.total : 0;
-      const t = max > 0 ? v / max : 0;
-      // intensidade: do fundo ao accent
-      const op = v > 0 ? (0.12 + t * 0.88) : 0;
-      const fill = v > 0 ? `rgba(79,179,169,${op.toFixed(2)})` : "var(--bg)";
-      const tit = c ? `${nomesF[d]} ${hr}h: ${eur.format(v)} em média` : `${nomesF[d]} ${hr}h: sem vendas`;
-      s += `<rect x="${x + gap / 2}" y="${y}" width="${cw - gap}" height="${ch}" rx="3" fill="${fill}"><title>${tit}</title></rect>`;
-    }
-  }
-  s += `</svg>`;
-  $("heat").innerHTML = s;
+  $("chDias").innerHTML = s + `</svg>`;
 }
 
 function barsHoras(horas) {
-  const W = 520, H = 120, pad = 18;
+  const W = 840, H = 120, pad = 18;
   if (!horas.length) { $("chHoras").innerHTML = `<div class="empty">Ainda sem vendas hoje.</div>`; return; }
   const ini = Math.min(8, ...horas.map(x => x.hora));
-  const fim = Math.max(22, ...horas.map(x => x.hora));
+  const fim = Math.max(21, ...horas.map(x => x.hora));
   const map = {}; horas.forEach(x => map[x.hora] = x);
   const n = fim - ini + 1;
   const max = Math.max(...horas.map(x => x.total)) || 1;
   const bw = (W - 8) / n;
-  let s = `<svg viewBox="0 0 ${W} ${H + pad}" width="100%" role="img">`;
+  let s = `<svg viewBox="0 0 ${W} ${H + pad}" width="100%" role="img" preserveAspectRatio="none">`;
   for (let i = 0; i < n; i++) {
     const hr = ini + i, x = map[hr];
-    const xx = 4 + i * bw + bw * 0.15, ww = bw * 0.7;
+    const xx = 4 + i * bw + bw * 0.18, ww = bw * 0.64;
     if (x) {
       const bh = Math.max(2, (x.total / max) * (H - 6));
       s += `<rect x="${xx}" y="${H - bh}" width="${ww}" height="${bh}" rx="2" fill="var(--accent)"><title>${hr}h: ${eur.format(x.total)} (${x.vendas} vendas)</title></rect>`;
@@ -349,17 +334,45 @@ function barsHoras(horas) {
     }
     if (hr % 2 === 0) s += `<text x="${xx + ww / 2}" y="${H + 13}" text-anchor="middle">${hr}h</text>`;
   }
-  s += `</svg>`;
-  $("chHoras").innerHTML = s;
+  $("chHoras").innerHTML = s + `</svg>`;
 }
 
-$("save").onclick = () => {
-  const v = $("tok").value.trim();
-  if (!v) return;
-  setTok(v); $("tok").value = ""; load();
-};
-$("refresh").onclick = () => { $("upd").textContent = "a atualizar…"; load(); };
+function heatmap(cells) {
+  if (!cells || !cells.length) { $("heatCard").style.display = "none"; return; }
+  const nomesF = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+  let hMin = 23, hMax = 0, max = 0;
+  cells.forEach(c => { if (c.vendas) { hMin = Math.min(hMin, c.h); hMax = Math.max(hMax, c.h); max = Math.max(max, c.total); } });
+  if (max === 0) { $("heatCard").style.display = "none"; return; }
+  $("heatCard").style.display = "block";
+  hMin = Math.min(hMin, 9); hMax = Math.max(hMax, 20);
+  const grid = {}; cells.forEach(c => { grid[c.d + "_" + c.h] = c; });
+  const nh = hMax - hMin + 1;
+  const W = 840, lab = 34, top = 16, ch = 22, gap = 3;
+  const cw = (W - lab) / nh;
+  const H = top + 7 * (ch + gap);
+  let s = `<svg viewBox="0 0 ${W} ${H + 6}" width="100%" role="img">`;
+  for (let hr = hMin; hr <= hMax; hr++) {
+    if (hr % 2 === 0) { const x = lab + (hr - hMin) * cw + cw / 2; s += `<text x="${x}" y="11" text-anchor="middle">${hr}h</text>`; }
+  }
+  for (let dd = 0; dd < 7; dd++) {
+    const y = top + dd * (ch + gap);
+    s += `<text x="0" y="${y + ch / 2 + 3}">${nomesF[dd]}</text>`;
+    for (let hr = hMin; hr <= hMax; hr++) {
+      const x = lab + (hr - hMin) * cw;
+      const c = grid[dd + "_" + hr];
+      const v = c ? c.total : 0;
+      const pct = v > 0 ? Math.round(14 + v / max * 86) : 0;
+      const fill = v > 0 ? `color-mix(in srgb,var(--accent) ${pct}%,var(--paper))` : "var(--soft)";
+      const tit = c ? `${nomesF[dd]} ${hr}h: ${eur.format(v)} em média` : `${nomesF[dd]} ${hr}h: sem vendas`;
+      s += `<rect x="${x + gap / 2}" y="${y}" width="${cw - gap}" height="${ch}" rx="3" fill="${fill}"><title>${tit}</title></rect>`;
+    }
+  }
+  $("heat").innerHTML = s + `</svg>`;
+}
+
+$("save").onclick = () => { const v = $("tok").value.trim(); if (!v) return; setTok(v); $("tok").value = ""; load(); };
 $("reset").onclick = () => { delTok(); showSetup(); };
+$("refresh").onclick = () => { $("upd").textContent = "a atualizar…"; load(); };
 
 load();
 setInterval(load, 60000);
