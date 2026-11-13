@@ -85,6 +85,11 @@ svg text{fill:var(--muted);font:11px var(--body)}
 .car{transition:transform .15s;display:inline-block;color:var(--muted)}
 #tal li.open .car{transform:rotate(90deg)}
 .empty{color:var(--muted);font-size:13px}
+.extremos{margin-top:12px;border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:6px}
+.extremos div{display:flex;justify-content:space-between;gap:10px;font-size:13px}
+.extremos .lab{color:var(--muted)}
+.extremos .val{text-align:right}
+.extremos .val b{font-family:var(--mono);font-variant-numeric:tabular-nums}
 .busca{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin-bottom:10px}
 .busca label{font-size:13px;color:var(--muted);display:flex;align-items:center;gap:6px}
 .busca input,.busca select{width:auto;padding:8px 9px;font:14px var(--body)}
@@ -197,6 +202,7 @@ footer{display:flex;justify-content:center;margin-top:4px}
   <section class="card">
     <h2>Top artigos (hoje)</h2>
     <ul class="lst" id="top"></ul>
+    <div class="extremos" id="extremos"></div>
   </section>
 
   <div class="err" id="err"></div>
@@ -364,6 +370,11 @@ function render(d) {
   heatmap(arr(d.heatmap));
   barsDias(arr(d.dias), h.data);
   barsHoras(arr(d.horas));
+
+  let ex = "";
+  if (d.mais_caro) ex += `<div><span class="lab">Mais caro vendido</span><span class="val">${esc(d.mais_caro.artigo)} · <b>${eur.format(d.mais_caro.preco)}</b></span></div>`;
+  if (d.mais_barato) ex += `<div><span class="lab">Mais barato vendido</span><span class="val">${esc(d.mais_barato.artigo)} · <b>${eur.format(d.mais_barato.preco)}</b></span></div>`;
+  $("extremos").innerHTML = ex;
 
   const top = arr(d.top_artigos);
   $("top").innerHTML = top.length ? top.map((t, i) =>
