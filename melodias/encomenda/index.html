@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Encomenda">
+<meta name="theme-color" content="#f3f6f7">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>Melodias · Encomenda</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+:root{
+  --bg:#f3f6f7; --paper:#ffffff; --ink:#0f2a33; --muted:#5b7079; --line:#d6e0e3;
+  --accent:#0c6e7a; --accent-ink:#ffffff; --soft:#e3eff1;
+  --good:#1d7a45; --bad:#b4372b; --warn:#9a6a00; --pink:#a3456f;
+  --display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --body:"IBM Plex Sans",ui-sans-serif,system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0c181c; --paper:#132328; --ink:#e4eef0; --muted:#8fa5ac; --line:#24393f;
+  --accent:#4fb3bf; --accent-ink:#06191c; --soft:#18323a;
+  --good:#5cc98a; --bad:#f08072; --warn:#e2b34a; --pink:#e58fb3; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0c181c; --paper:#132328; --ink:#e4eef0; --muted:#8fa5ac; --line:#24393f;
+  --accent:#4fb3bf; --accent-ink:#06191c; --soft:#18323a;
+  --good:#5cc98a; --bad:#f08072; --warn:#e2b34a; --pink:#e58fb3; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;
+  padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));
+  padding-top:calc(env(safe-area-inset-top,0px) + 18px);padding-bottom:calc(env(safe-area-inset-bottom,0px) + 96px);-webkit-font-smoothing:antialiased}
+.wrap{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+header{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.brand small{display:block;font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
+.brand h1{font-family:var(--display);font-size:clamp(24px,6vw,30px);margin:2px 0 0;line-height:1.1}
+.hdr-r{display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--line);background:var(--paper);color:var(--ink);font:600 13px var(--body);padding:8px 12px;border-radius:8px;cursor:pointer;white-space:nowrap;text-decoration:none}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.theme::before{content:"";display:inline-block;width:12px;height:12px;margin-right:6px;vertical-align:-1px;border-radius:50%;border:2px solid currentColor;background:linear-gradient(90deg,currentColor 50%,transparent 50%)}
+.status{font-size:12.5px;color:var(--muted);font-family:var(--mono)}
+.card{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:14px}
+.seg{display:flex;background:var(--soft);border-radius:10px;padding:3px;gap:3px}
+.seg button{flex:1;background:none;border:0;color:var(--muted);padding:9px 6px;border-radius:8px;font:600 13.5px var(--body);cursor:pointer}
+.seg button.on{background:var(--paper);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.periodo{font-size:14px;margin-top:8px}
+.aviso{background:var(--soft);border-left:3px solid var(--warn);border-radius:8px;padding:8px 10px;font-size:13px;margin-top:8px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kpi{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px;min-width:0}
+.kpi .v{font:600 19px var(--mono);font-variant-numeric:tabular-nums}
+.kpi .k{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.lbl{font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600;margin:4px 0 -4px}
+.chips{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px;-webkit-overflow-scrolling:touch}
+.chip{white-space:nowrap;background:var(--paper);border:1px solid var(--line);color:var(--muted);padding:6px 11px;border-radius:999px;font-size:13px;cursor:pointer}
+.chip.on{border-color:var(--accent);color:var(--accent);font-weight:600}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.fcard{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:10px 10px 9px 13px;position:relative;overflow:hidden;cursor:pointer;min-width:0}
+.fcard:before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--c)}
+.fcard.on{border-color:var(--c);box-shadow:0 0 0 1px var(--c) inset}
+.fcard .fn{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fcard .fv{font:600 19px var(--mono);margin-top:2px}
+.fcard .fv small{font:400 12px var(--body);color:var(--muted)}
+.fcard .fe{font-size:12.5px;color:var(--muted)}
+.fcard.todos{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ordem{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ordem .seg{flex:0 0 auto}
+.add input{width:100%;padding:11px;border-radius:10px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font:15px var(--body)}
+.res{margin-top:6px;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--paper)}
+.res:empty{display:none}
+.res div{padding:9px 12px;border-top:1px solid var(--line);cursor:pointer;font-size:14px}
+.res div:first-child{border-top:0}
+.res div small{display:block;color:var(--muted);font-size:12px}
+.res .novo{color:var(--accent)}
+.res .urgo{padding-left:26px;color:var(--pink)}
+.res select{font:13px var(--body);margin-top:4px;padding:3px;border-radius:6px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.fhead{display:flex;justify-content:space-between;align-items:baseline;margin:10px 0 0;padding-left:9px;border-left:5px solid var(--c)}
+.fhead h2{font-family:var(--display);font-size:18px;margin:0}
+.fhead small{color:var(--muted);font-family:var(--mono);font-size:12.5px}
+.item{background:var(--paper);border:1px solid var(--line);border-left:4px solid var(--c);border-radius:12px;padding:10px 10px 10px 12px}
+.row1{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.nome{font-weight:600;font-size:15px}
+.fam{color:var(--muted);font-size:12.5px}
+.stepper{display:flex;align-items:center;gap:3px;flex-shrink:0}
+.stepper button{width:36px;height:36px;border-radius:9px;border:1px solid var(--line);background:var(--soft);color:var(--ink);font-size:19px;cursor:pointer}
+.vol{min-width:48px;text-align:center}
+.vol b{font:600 21px var(--mono);display:block;line-height:1}
+.vol span{font-size:10.5px;color:var(--muted)}
+.vol.adj b{color:var(--warn)}
+.row2{display:flex;align-items:flex-end;gap:10px;margin-top:6px}
+.spark{display:flex;align-items:flex-end;gap:3px;height:24px;flex-shrink:0}
+.spark i{display:block;width:8px;background:var(--line);border-radius:2px 2px 0 0}
+.spark i.last{background:var(--accent)}
+.det{font-size:12.5px;color:var(--muted);flex:1}
+.det em{font-style:normal;color:var(--ink);font-family:var(--mono)}
+.tag{display:inline-block;font-size:11px;padding:1px 7px;border-radius:999px;margin-left:5px;vertical-align:1px;font-weight:600;background:var(--soft)}
+.t-up{color:var(--good)} .t-down{color:var(--bad)} .t-stop{color:var(--pink)} .t-new{color:var(--accent)}
+.t-fora{color:var(--warn)} .t-urg{color:var(--pink)} .t-add{color:var(--accent)}
+.urg{border:1px solid var(--line);background:var(--soft);color:var(--pink);border-radius:8px;font:600 12.5px var(--body);padding:6px 9px;margin-top:7px;cursor:pointer}
+.urg.on{background:var(--pink);color:#fff;border-color:var(--pink)}
+.zeros{text-align:center;cursor:pointer;color:var(--muted);font-size:13px}
+details.opc summary{cursor:pointer;font-weight:600;font-size:14px}
+details.opc .seg{margin-top:10px}
+details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--paper);border-top:1px solid var(--line);
+  padding:10px 14px calc(10px + env(safe-area-inset-bottom,0px));z-index:5}
+.bar .in{max-width:720px;margin:0 auto;display:flex;gap:10px;align-items:center}
+.bar .tot{flex:1;font-size:12.5px;color:var(--muted);min-width:0}
+.bar .tot b{color:var(--ink);font:600 16px var(--mono)}
+.toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:var(--paper);
+  padding:8px 14px;border-radius:10px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9}
+.toast.show{opacity:1}
+.err{color:var(--bad);font-size:13px}
+#setup p{color:var(--muted);font-size:14px;margin:0 0 10px}
+#setup input{width:100%;padding:11px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:15px var(--body);margin-bottom:8px}
+.feita{display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center}
+.feita p{font-size:12.5px;color:var(--muted);margin:0}
+.beta{font-size:11px;font-weight:700;color:var(--accent-ink);background:var(--accent);border-radius:6px;padding:1px 6px;vertical-align:4px;margin-left:4px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="brand">
+    <small>Melodias do Mar</small>
+    <h1>Encomenda <span class="beta">BETA</span></h1>
+  </div>
+  <div class="hdr-r">
+    <button class="btn" id="refresh">↻ <span id="upd">atualizar</span></button>
+    <button class="btn theme" id="theme">Tema</button>
+  </div>
+</header>
+
+<section id="setup" class="card" style="display:none">
+  <p>Cole a chave de leitura do GitHub (começa por <b>github_pat_</b>). É a mesma do painel de vendas e fica guardada só neste telemóvel.</p>
+  <input id="tok" type="password" autocomplete="off" placeholder="github_pat_...">
+  <button class="btn primary" id="save">Guardar</button>
+  <div class="err" id="setupErr"></div>
+</section>
+
+<main id="app" style="display:none" class="wrap">
+  <div>
+    <div class="seg" id="encomenda"></div>
+    <div class="periodo" id="periodo"></div>
+    <div id="aviso"></div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="v" id="kVend">–</div><div class="k">vendidos</div></div>
+    <div class="kpi"><div class="v" id="kVol">–</div><div class="k">a pedir</div></div>
+    <div class="kpi"><div class="v" id="kEur">–</div><div class="k">valor ≈</div></div>
+  </div>
+
+  <div class="lbl">Família</div>
+  <div class="chips" id="familias"></div>
+
+  <div class="lbl">Fornecedores — toca para abrir</div>
+  <div class="fgrid" id="forns"></div>
+
+  <div class="lbl">Falta alguma coisa?</div>
+  <div class="add">
+    <input id="procura" type="search" placeholder="🔍 Procurar ou adicionar artigo…" autocomplete="off">
+    <div class="res" id="res"></div>
+  </div>
+
+  <div class="ordem">
+    <div class="lbl" style="margin:0">Lista</div>
+    <div class="seg" id="ordem"><button data-v="alfa" class="on">A–Z</button><button data-v="vendas">Mais vendidos</button></div>
+  </div>
+
+  <div id="lista" style="display:flex;flex-direction:column;gap:8px"></div>
+
+  <div class="card feita">
+    <button class="btn primary" id="feita">✓ Encomenda feita</button>
+    <p id="feitaMsg">Carrega depois de fazer a encomenda: guarda o que fica por pedir (o "resto") para a próxima e limpa os ajustes.</p>
+  </div>
+
+  <details class="card opc">
+    <summary>⚙️ Opções</summary>
+    <div class="seg" id="base"><button data-v="media" class="on">Média 4 semanas</button><button data-v="periodo">Só este período</button></div>
+    <p><b>Média 4 semanas</b>: olha para o habitual (recomendado). <b>Só este período</b>: repõe exatamente o que se vendeu.</p>
+    <div class="seg" id="picos"><button data-v="ignorar" class="on">Ignorar picos</button><button data-v="incluir">Incluir picos</button></div>
+    <p><b>Picos</b>: dias em que uma marca vendeu pelo menos 20 maços e mais do triplo do normal (alguém levou vários volumes). Por defeito o excesso não conta.</p>
+    <p style="margin-top:12px"><a class="btn" href="../">← Painel de vendas</a> <button class="btn" id="reset">Trocar chave</button> <button class="btn" id="limpar">Apagar ajustes guardados</button></p>
+  </details>
+
+  <div class="err" id="err"></div>
+</main>
+</div>
+
+<div class="bar" id="bar" style="display:none"><div class="in">
+  <div class="tot"><b id="bTot">0</b><br><span id="bForn"></span></div>
+  <button class="btn primary" id="copiar">Copiar tudo</button>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const REPO = "LDinisPT/melodias-dados";
+const FILE = "encomenda.json";
+const KEY = "melodias_token";
+const EST = "melodias_encomenda";
+const $ = id => document.getElementById(id);
+const SEMANA = ["dom","seg","ter","qua","qui","sex","sáb"];
+const FAM_TAB = new Set(["Tabaco Novidade","Tabaco RYO"]);
+const CURTO = {1:"Mid Sid",172:"Valente & Neto",135:"Logista",121:"Senense",143:"Bel",51:"EuroNovidades",8:"Antº Borges",145:"Rangel"};
+const CORES = {"Mid Sid":"#2f9a92","Valente & Neto":"#5a78e0","Logista":"#d4a03a","Bel":"#c25a86","Senense":"#d9694a","EuroNovidades":"#8c6bc9","Rangel":"#3fae73"};
+const PAL = ["#4aa3d8","#cf8c4c","#7fae4c","#c75f92","#6f90b8"];
+
+function getTok(){ try { return localStorage.getItem(KEY); } catch(e){ return null; } }
+function setTok(v){ try { localStorage.setItem(KEY, v); } catch(e){} }
+function delTok(){ try { localStorage.removeItem(KEY); } catch(e){} }
+function lerEst(){ try { return JSON.parse(localStorage.getItem(EST)) || {}; } catch(e){ return {}; } }
+function gravaEst(){ try { localStorage.setItem(EST, JSON.stringify(est)); } catch(e){} }
+
+// tema (partilhado com o painel)
+try { const th = localStorage.getItem("melodias_theme"); if (th) document.documentElement.setAttribute("data-theme", th); } catch(e){}
+$("theme").onclick = () => {
+  const cur = document.documentElement.getAttribute("data-theme");
+  const dark = cur ? cur === "dark" : matchMedia("(prefers-color-scheme:dark)").matches;
+  const next = dark ? "light" : "dark";
+  document.documentElement.setAttribute("data-theme", next);
+  try { localStorage.setItem("melodias_theme", next); } catch(e){}
+};
+
+// ---------- estado ----------
+let DADOS = null, ART = [], DIAS = [], IX = {}, HOJE = "", ENCS = [];
+let enc = null, filtro = "Tabaco Novidade", fornSel = null, verZeros = false;
+let est = lerEst();
+est.ordem = est.ordem || "alfa"; est.base = est.base || "media"; est.picos = est.picos || "ignorar";
+est.resto = est.resto || {};      // {id: maços que transitam}
+est.ped = est.ped || {};          // por encomenda: {data: {aj:{}, urg:{}, novos:[]}}
+
+const D = s => new Date(s + "T12:00:00");
+const iso = d => d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+const add = (s,n) => { const d = D(s); d.setDate(d.getDate()+n); return iso(d); };
+const dow = s => D(s).getDay();
+const dm = s => D(s).getDate() + "/" + (D(s).getMonth()+1);
+const fmt = s => SEMANA[dow(s)] + " " + dm(s);
+const eur0 = v => Math.round(v).toLocaleString("pt-PT") + " €";
+const eur = (v,d=2) => v == null ? "–" : v.toFixed(d).replace(".", ",") + " €";
+const esc = s => String(s).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+const norm = t => t.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
+
+function pedAtual(){ const p = (est.ped[enc] ||= {aj:{}, urg:{}, novos:[]}); return p; }
+
+function nomeForn(id){
+  if (CURTO[id]) return CURTO[id];
+  const n = (DADOS.forn && DADOS.forn[id]) || ("Fornecedor " + id);
+  return n.replace(/,?\s*(Lda|S\.?A|Unipessoal|Unip)\.?.*$/i,"").split(/\s+/).slice(0,3).join(" ");
+}
+function cor(f){ if (f.startsWith("Sem")) return "#7d8e96"; if (CORES[f]) return CORES[f]; let h=0; for (const c of f) h=(h*31+c.charCodeAt(0))>>>0; return PAL[h%PAL.length]; }
+
+function prepara(d){
+  DADOS = d; DIAS = d.dias; HOJE = d.hoje; IX = {}; DIAS.forEach((x,i)=>IX[x]=i);
+  const zeros = DIAS.map(()=>0);
+  ART = d.art.map(a => {
+    let v = a.v;
+    if (FAM_TAB.has(a.f)) { if (!v || v < 5 || (v > 10 && v % 10 === 0)) v = 10; }
+    else v = v || 1;
+    const forns = (a.c||[]).map(x=>[nomeForn(x[0]), x[1]]).sort((p,q)=>p[1]-q[1]);
+    const o = {id:a.i, artigo:a.a, familia:a.f, pvp:a.p||0, vol:v, forns, q:a.q||zeros, temVendas:!!a.q};
+    const comp = DIAS.filter(x=>x<HOJE).map(x=>o.q[IX[x]]).sort((x,y)=>x-y);
+    const p75 = comp[Math.floor(comp.length*0.75)] || 0;
+    o.lim = Math.max(3*p75, p75+20, 20); o.norm = Math.ceil(p75);
+    return o;
+  });
+  // encomendas manuais deste telemóvel
+  for (const [data,p] of Object.entries(est.ped)) for (const n of (p.novos||[])) {
+    if (!ART.find(a=>a.id===n.id)) ART.push({id:n.id, artigo:n.artigo, familia:"Adicionados à mão", pvp:0, vol:n.vol||10, forns:[[n.forn,null]], q:zeros, manual:true, lim:1e9, norm:0, temVendas:false, so:data});
+  }
+  // próximas encomendas: domingo e quarta
+  ENCS = []; for (let i=0;i<8 && ENCS.length<2;i++){ const x=add(HOJE,i); if (dow(x)===0||dow(x)===3) ENCS.push(x); }
+  if (!enc || !ENCS.includes(enc)) enc = ENCS[0];
+  // limpar encomendas antigas guardadas
+  for (const k of Object.keys(est.ped)) if (k < add(HOJE,-14)) delete est.ped[k];
+}
+
+function janela(o,k){ const n = dow(o)===0 ? 4 : 3, out=[]; for (let i=n;i>=1;i--) out.push(add(o,-i-7*k)); return out; }
+function soma(a,dias){
+  let tot=0, ex=0;
+  for (const d of dias){ const i=IX[d]; if (i===undefined) continue; const q=a.q[i]; tot+=q; if (q>=a.lim) ex+=q-a.norm; }
+  return {tot, ex, liq: tot-ex};
+}
+
+function calcula(a){
+  const p = pedAtual();
+  const comeca = janela(enc,0)[0] <= HOJE, off = comeca ? 0 : 1;
+  const jw = janela(enc,off), parcial = jw[jw.length-1] >= HOJE;
+  const ws = [0,1,2,3].map(k=>soma(a, janela(enc,k+off)));
+  const w = ws.map(x => est.picos==="ignorar" ? x.liq : x.tot);
+  const V = a.vol || 1;
+  const resto = (est.restoDe && est.restoDe < enc && est.resto[a.id]) || 0;
+  const media = parcial ? (w[1]*3+w[2]*2+w[3])/6 : (w[0]*4+w[1]*3+w[2]*2+w[3])/10;
+  const media3 = (w[1]+w[2]+w[3])/3;
+  const b = est.base==="periodo" ? w[0] : Math.round(media);
+  const alvo = b + resto;
+  const sug = Math.max(0, Math.round(alvo / V));
+  const adj = p.aj[a.id] || 0;
+  const vol = Math.max(0, sug + adj);
+  const novoResto = a.manual ? 0 : alvo - vol*V;
+  const urg = !!p.urg[a.id];
+  const f0 = a.forns[0];
+  let forn = f0 ? f0[0] : "Sem compras recentes", custo = f0 ? f0[1] : null;
+  if (urg) { const bel = a.forns.find(f=>f[0]==="Bel"); forn = "Bel"; if (bel) custo = bel[1]; }
+  const mg = (custo && a.pvp) ? (a.pvp-custo)/a.pvp*100 : null;
+  const tags = [];
+  if (a.manual || p.aj[a.id] && !a.temVendas) tags.push(["add","adicionado"]);
+  if (urg) tags.push(["urg","⚡ urgente"]);
+  if (w[0]<=0 && (w[1]+w[2]+w[3])>0) tags.push(["stop","parou"]);
+  else if (w[3]<=0 && w[2]<=0 && w[0]>0) tags.push(["new","novo"]);
+  else if (!parcial && media3>=3 && w[0]>media3*1.3) tags.push(["up","a subir"]);
+  else if (!parcial && media3>=3 && w[0]<media3*0.7) tags.push(["down","a descer"]);
+  if (ws[0].ex>0) tags.push(["fora","pico +"+ws[0].ex]);
+  return {...a, w, ws, media, b, sug, vol, adj, novoResto, forn, custo, mg, tags, V, resto, urg, parcial, comeca};
+}
+const valor = l => l.vol * (l.V||1) * (l.custo ?? (l.pvp ? l.pvp*0.93 : 0));
+const ordena = arr => est.ordem==="alfa" ? arr.sort((a,b)=>a.artigo.localeCompare(b.artigo,"pt")) : arr.sort((a,b)=>b.b-a.b || a.artigo.localeCompare(b.artigo,"pt"));
+function alt(l){
+  if (l.custo==null || l.forns.length<2) return "";
+  const o = l.forns.filter(f=>f[0]!==l.forn).slice(0,3).map(f=>{const d=f[1]-l.custo; return f[0]+" "+(d>=0?"+":"")+(d*100).toFixed(1).replace(".",",")+" cênt."}).join(" · ");
+  return o ? `<div class="fam">outros: ${o}</div>` : "";
+}
+function segOn(id,v){ document.querySelectorAll("#"+id+" button").forEach(b=>b.classList.toggle("on", b.dataset.v===v)); }
+
+function render(){
+  const p = pedAtual();
+  $("encomenda").innerHTML = ENCS.map(e=>`<button data-v="${e}" class="${e===enc?'on':''}">${dow(e)===0?'Domingo':'Quarta'} ${dm(e)}</button>`).join("");
+  segOn("ordem",est.ordem); segOn("base",est.base); segOn("picos",est.picos);
+  const j0 = janela(enc,0), comeca = j0[0] <= HOJE, jUse = comeca ? j0 : janela(enc,1), parcial = jUse[jUse.length-1] >= HOJE;
+  $("periodo").innerHTML = `Repõe as vendas de <b>${fmt(jUse[0])}</b> a <b>${fmt(jUse[jUse.length-1])}</b>${comeca?'':' (semana passada)'}`;
+  $("aviso").innerHTML = !comeca
+    ? `<div class="aviso">O período desta encomenda (${fmt(j0[0])} a ${fmt(j0[j0.length-1])}) ainda não começou — por agora mostra o mesmo período da semana passada.</div>`
+    : parcial ? `<div class="aviso">O período ainda está a decorrer (vendas até ${DADOS.atualizado.slice(11,16)}). A média usa as 3 semanas anteriores; no dia da encomenda fica completo.</div>` : "";
+
+  const linhas = ART.filter(a=>!a.so || a.so===enc).map(calcula);
+  const fams = ["Todos", ...[...new Set(linhas.filter(l=>l.temVendas||l.manual||l.adj).map(l=>l.familia))].sort((a,b)=>a.localeCompare(b,"pt"))];
+  if (!fams.includes(filtro)) filtro = "Todos";
+  $("familias").innerHTML = fams.map(f=>`<span class="chip ${f===filtro?'on':''}" data-v="${esc(f)}">${f}</span>`).join("");
+  const daFam = linhas.filter(l => filtro==="Todos" || l.familia===filtro);
+  const pedir = daFam.filter(l => l.vol>0);
+  const zeros = daFam.filter(l => l.vol===0 && l.temVendas && l.w.some(x=>x>0));
+  const stats = {};
+  pedir.forEach(l => { const s = (stats[l.forn] ||= {vol:0,n:0,eur:0,urg:0}); s.vol+=l.vol; s.n++; s.eur+=valor(l); if (l.urg) s.urg++; });
+  const ordemF = Object.keys(stats).sort((a,b)=>a.startsWith("Sem")?1:b.startsWith("Sem")?-1:stats[b].eur-stats[a].eur);
+  if (fornSel && !stats[fornSel]) fornSel = null;
+  const totEur = pedir.reduce((s,l)=>s+valor(l),0), totVol = pedir.reduce((s,l)=>s+l.vol,0);
+
+  let fh = `<div class="fcard todos ${fornSel?'':'on'}" data-v="" style="--c:var(--accent)">
+     <div><div class="fn">Todos os fornecedores</div><div class="fe">${pedir.length} artigos</div></div>
+     <div class="fv">${totVol} <small>vol</small> · ≈ ${eur0(totEur)}</div></div>`;
+  for (const f of ordemF){ const s = stats[f];
+    fh += `<div class="fcard ${fornSel===f?'on':''}" data-v="${esc(f)}" style="--c:${cor(f)}">
+      <div class="fn">${f}${s.urg?' ⚡':''}</div><div class="fv">${s.vol} <small>vol · ${s.n} art.</small></div>
+      <div class="fe">≈ ${eur0(s.eur)}${s.urg?' · '+s.urg+' urgente'+(s.urg>1?'s':''):''}</div></div>`; }
+  $("forns").innerHTML = fh;
+
+  const vis = verZeros ? pedir.concat(zeros) : pedir;
+  const porF = {}; vis.forEach(l => (porF[l.forn] ||= []).push(l));
+  const mostrar = fornSel ? [fornSel] : Object.keys(porF).sort((a,b)=>(stats[b]?.eur||0)-(stats[a]?.eur||0));
+  let html = "";
+  for (const f of mostrar){
+    const itens = ordena(porF[f]||[]); if (!itens.length) continue;
+    const s = stats[f] || {vol:0,eur:0};
+    html += `<div class="fhead" style="--c:${cor(f)}"><h2>${f}</h2><small>${s.vol} vol · ≈ ${eur0(s.eur)}</small></div>`;
+    for (const l of itens){
+      const mx = Math.max(...l.w,1);
+      const spark = [...l.w].reverse().map((x,i)=>`<i class="${i===3?'last':''}" style="height:${Math.max(2,x/mx*24)}px"></i>`).join("");
+      const tags = l.tags.map(t=>`<span class="tag t-${t[0]}">${t[1]}</span>`).join("");
+      const parou = l.tags.some(t=>t[0]==="stop"), temBel = l.forns.some(f=>f[0]==="Bel");
+      const ub = (temBel && l.forn!=="Bel" && parou) || l.urg
+        ? `<button class="urg ${l.urg?'on':''}" data-u="${esc(l.id)}">${l.urg?'⚡ Urgente à Bel — tirar':'Esgotado? ⚡ pedir à Bel'}</button>` : "";
+      const ex = l.ws[0].ex;
+      const det = (l.manual && !l.temVendas) ? "artigo novo — sem histórico de vendas"
+        : `vendeu <em>${l.ws[0].tot}</em>${ex?` <span style="color:var(--warn)">(${ex} em pico${est.picos==="ignorar"?', não conta':''})</span>`:''} · média <em>${l.media.toFixed(0)}</em>${l.resto?` · resto <em>${l.resto>0?'+':''}${l.resto}</em>`:''} · fica <em>${l.novoResto>0?'+':''}${l.novoResto}</em>`;
+      html += `<div class="item" style="--c:${cor(f)}">
+        <div class="row1">
+          <div style="min-width:0"><div class="nome">${esc(l.artigo)}${tags}</div>
+            <div class="fam">${l.familia}${l.pvp?' · PVP '+eur(l.pvp):''}${l.custo?' · custo '+eur(l.custo,3)+' · margem '+l.mg.toFixed(1).replace(".",",")+'%':''}${l.vol?(valor(l)?' · ≈ '+eur0(valor(l)):' · sem preço'):''}</div>
+            ${alt(l)}</div>
+          <div class="stepper">
+            <button data-a="${esc(l.id)}" data-d="-1" aria-label="menos">−</button>
+            <div class="vol ${l.adj?'adj':''}"><b>${l.vol}</b><span>${l.adj?'sug. '+l.sug:(l.V>1?'vol de '+l.V:'unid.')}</span></div>
+            <button data-a="${esc(l.id)}" data-d="1" aria-label="mais">+</button>
+          </div>
+        </div>
+        <div class="row2">${l.temVendas?`<div class="spark" title="mesmo período nas últimas 4 semanas">${spark}</div>`:''}<div class="det">${det}</div></div>
+        ${ub}
+      </div>`;
+    }
+  }
+  const zv = fornSel ? zeros.filter(l=>l.forn===fornSel) : zeros;
+  if (zv.length) html += `<div class="card zeros" id="zeros">${verZeros?'Esconder':'Mostrar'} os <b>${zv.length}</b> artigos que ficam a 0<br><small>venderam menos de meio volume — passa para a encomenda seguinte</small></div>`;
+  if (!html) html = `<div class="card zeros">Nada a pedir nesta família.</div>`;
+  $("lista").innerHTML = html;
+
+  const sv = fornSel ? stats[fornSel].vol : totVol, se = fornSel ? stats[fornSel].eur : totEur;
+  $("kVend").textContent = daFam.reduce((s,l)=>s+l.ws[0].tot,0).toLocaleString("pt-PT");
+  $("kVol").textContent = totVol;
+  $("kEur").textContent = eur0(totEur);
+  $("bTot").textContent = sv + " vol · ≈ " + eur0(se);
+  $("bForn").textContent = fornSel || "todos os fornecedores";
+  $("copiar").textContent = fornSel ? "Copiar " + fornSel : "Copiar tudo";
+  $("feitaMsg").textContent = est.feita && est.feita[enc]
+    ? "Marcada como feita às " + est.feita[enc] + ". Podes voltar a carregar se mudares alguma coisa."
+    : "Carrega depois de fazer a encomenda: guarda o que fica por pedir (o \"resto\") para a próxima.";
+  window._lista = {ordemF: fornSel ? [fornSel] : ordemF, pedir, stats, todas: linhas};
+}
+
+function toast(t){ const e=$("toast"); e.textContent=t; e.classList.add("show"); clearTimeout(e._t); e._t=setTimeout(()=>e.classList.remove("show"),1700); }
+
+// ---------- eventos ----------
+$("encomenda").onclick = e => { const b=e.target.closest("button"); if(!b) return; enc=b.dataset.v; fornSel=null; render(); };
+$("ordem").onclick = e => { const b=e.target.closest("button"); if(!b) return; est.ordem=b.dataset.v; gravaEst(); render(); };
+$("base").onclick = e => { const b=e.target.closest("button"); if(!b) return; est.base=b.dataset.v; gravaEst(); render(); };
+$("picos").onclick = e => { const b=e.target.closest("button"); if(!b) return; est.picos=b.dataset.v; gravaEst(); render(); };
+$("familias").onclick = e => { const c=e.target.closest(".chip"); if(!c) return; filtro=c.dataset.v; fornSel=null; verZeros=false; render(); };
+$("forns").onclick = e => { const c=e.target.closest(".fcard"); if(!c) return; fornSel=c.dataset.v||null; verZeros=false; render();
+  try { $("lista").scrollIntoView({behavior:"smooth", block:"start"}); } catch(_){} };
+$("lista").onclick = e => {
+  if (e.target.closest("#zeros")) { verZeros=!verZeros; render(); return; }
+  const p = pedAtual();
+  const u = e.target.closest("button[data-u]");
+  if (u) { const id=u.dataset.u; if (p.urg[id]) delete p.urg[id]; else p.urg[id]=true; gravaEst(); render(); toast(p.urg[id]?"Passou para a Bel (urgente)":"Voltou ao fornecedor normal"); return; }
+  const b = e.target.closest("button[data-a]"); if (!b) return;
+  const id = b.dataset.a; p.aj[id] = (p.aj[id]||0) + (+b.dataset.d); if (!p.aj[id]) delete p.aj[id]; gravaEst(); render();
+};
+
+const FORNS_LISTA = ["Mid Sid","Valente & Neto","Bel","Logista","EuroNovidades","Senense","Rangel"];
+function mostraRes(){
+  const t = $("procura").value.trim(); if (t.length<2){ $("res").innerHTML=""; return; }
+  const n = norm(t);
+  const hits = ART.filter(a=>!a.manual && norm(a.artigo).includes(n)).sort((a,b)=>(b.temVendas-a.temVendas)||a.artigo.localeCompare(b.artigo,"pt")).slice(0,8);
+  $("res").innerHTML = hits.map(a=>{
+    const f0 = a.forns[0] ? a.forns[0][0] : "";
+    const bel = a.forns.some(f=>f[0]==="Bel") && f0!=="Bel";
+    return `<div data-id="${esc(a.id)}">${esc(a.artigo)}<small>${a.familia}${f0?' · '+f0:''} · toca para +1 ${a.vol>1?'volume':'unid.'}</small></div>` +
+      (bel ? `<div class="urgo" data-id="${esc(a.id)}" data-urg="1">⚡ falta urgente — pedir à Bel<small>a Bel entrega mais depressa</small></div>` : "");
+  }).join("") + `<div class="novo" data-novo="1">＋ Adicionar «${esc(t)}» como artigo novo
+     <small>não está no Sage ou nunca vendeu · fornecedor:
+     <select id="novoForn">${FORNS_LISTA.map(f=>`<option>${f}</option>`).join("")}</select></small></div>`;
+}
+$("procura").addEventListener("input", mostraRes);
+$("res").onclick = e => {
+  if (e.target.tagName==="SELECT" || e.target.tagName==="OPTION") return;
+  const d = e.target.closest("div[data-id],div[data-novo]"); if (!d) return;
+  const p = pedAtual(); let a;
+  if (d.dataset.novo) {
+    const nome = $("procura").value.trim(), forn = $("novoForn").value;
+    const id = "novo-" + Date.now();
+    p.novos.push({id, artigo:nome, forn, vol:10});
+    a = {id, artigo:nome, familia:"Adicionados à mão", pvp:0, vol:10, forns:[[forn,null]], q:DIAS.map(()=>0), manual:true, lim:1e9, norm:0, temVendas:false, so:enc};
+    ART.push(a); p.aj[id] = 1;
+  } else {
+    a = ART.find(x=>x.id===d.dataset.id);
+    if (d.dataset.urg) p.urg[a.id] = true;
+    p.aj[a.id] = (p.aj[a.id]||0) + 1;
+  }
+  if (filtro!=="Todos" && filtro!==a.familia) filtro = a.familia;
+  fornSel = null; $("procura").value = ""; $("res").innerHTML = ""; gravaEst(); render();
+  toast("Adicionado: " + a.artigo);
+};
+
+$("copiar").onclick = async () => {
+  const {ordemF, pedir, stats} = window._lista;
+  let txt = "Encomenda tabaco – " + (dow(enc)===0?"domingo ":"quarta ") + dm(enc) + "\n";
+  for (const f of ordemF){
+    const it = pedir.filter(l=>l.forn===f).sort((a,b)=>a.artigo.localeCompare(b.artigo,"pt")); if (!it.length) continue;
+    txt += "\n" + f + " (" + stats[f].vol + " vol, ≈ " + eur0(stats[f].eur) + ")\n" + it.map(l=>`${l.vol} ${l.V>1?'vol':'un'}  ${l.artigo}${l.urg?'  (URGENTE)':''}`).join("\n") + "\n";
+  }
+  try { await navigator.clipboard.writeText(txt); toast("Lista copiada"); }
+  catch(_) { toast("Não deu para copiar"); }
+};
+
+$("feita").onclick = () => {
+  // guarda o resto de TODAS as famílias para a próxima encomenda
+  const linhas = ART.filter(a=>!a.so || a.so===enc).map(calcula);
+  const r = {};
+  for (const l of linhas) if (!l.manual && l.novoResto) r[l.id] = l.novoResto;
+  est.resto = r; est.restoDe = enc;
+  est.feita = est.feita || {}; est.feita[enc] = new Date().toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"});
+  gravaEst(); render(); toast("Encomenda marcada como feita ✓");
+};
+$("limpar").onclick = () => { est.ped = {}; est.resto = {}; est.restoDe = null; est.feita = {}; gravaEst(); load(); toast("Ajustes apagados"); };
+$("reset").onclick = () => { delTok(); showSetup(); };
+$("save").onclick = () => { const v=$("tok").value.trim(); if(!v) return; setTok(v); $("tok").value=""; load(); };
+$("refresh").onclick = () => load();
+
+function showSetup(msg){ $("app").style.display="none"; $("bar").style.display="none"; $("setup").style.display="block"; $("setupErr").textContent = msg || ""; }
+
+async function load(){
+  const tok = getTok();
+  if (!tok) return showSetup();
+  $("upd").textContent = "a carregar…";
+  try {
+    const r = await fetch(`https://api.github.com/repos/${REPO}/contents/${FILE}?t=${Date.now()}`, {
+      headers: { Authorization: `Bearer ${tok}`, Accept: "application/vnd.github.raw+json" }, cache: "no-store" });
+    if (r.status===401 || r.status===403) return showSetup("Chave inválida ou sem acesso. Verifique e cole de novo.");
+    if (r.status===404) { $("upd").textContent="sem dados"; return showSetup("Ainda não há dados da encomenda (o collector envia de meia em meia hora, das 8h às 21h)."); }
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const d = await r.json();
+    prepara(d);
+    $("setup").style.display="none"; $("app").style.display="flex"; $("bar").style.display="block"; $("err").textContent="";
+    $("upd").textContent = "dados " + d.atualizado.slice(8,10) + "/" + d.atualizado.slice(5,7) + " " + d.atualizado.slice(11,16);
+    render();
+  } catch(e) {
+    $("upd").textContent = "erro";
+    $("err").textContent = "Sem ligação. (" + e.message + ")";
+  }
+}
+load();
+</script>
+</body>
+</html>
