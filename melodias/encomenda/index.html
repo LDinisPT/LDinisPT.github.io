@@ -377,7 +377,25 @@ function calcula(a){
   else if (!parcial && media3>=3 && w[0]>media3*1.3) tags.push(["up","a subir"]);
   else if (!parcial && media3>=3 && w[0]<media3*0.7) tags.push(["down","a descer"]);
   if (ws[0].ex>0) tags.push(["fora","pico +"+ws[0].ex]);
-  return {...a, w, ws, media, b, sug, vol, adj, novoResto, forn, custo, mg, tags, V, resto, urg, parcial, comeca};
+  return {...a, w, ws, media, b, sug, vol, adj, novoResto, forn, custo, mg, tags, V, resto, urg, parcial, comeca, escolhido: !!esc_};
+}
+// preço igual (diferença < 0,1 cênt./maço) em vários fornecedores: divide os volumes entre eles
+function divide(l){
+  if (l.vol < 1 || l.urg || l.escolhido || l.manual || !l.forns || l.forns.length < 2 || l.custo == null) return [l];
+  const min = l.forns[0][1];
+  const emp = l.forns.filter(f => f[1] - min < 0.001);
+  if (emp.length < 2) return [l];
+  const k = emp.length, base = Math.floor(l.vol / k), extra = l.vol % k;
+  let h = 0; for (const c of l.id) h = (h*31 + c.charCodeAt(0)) >>> 0;
+  const off = (Math.round(D(enc).getTime()/864e5) + h) % k;   // quem leva o volume a mais vai rodando
+  const out = [];
+  emp.forEach((f,i) => {
+    const v = base + (((i - off + k) % k) < extra ? 1 : 0);
+    if (v > 0) out.push({...l, vol:v, forn:f[0], custo:f[1], mg: l.pvp ? (l.pvp-f[1])/l.pvp*100 : null,
+      parte:{total:l.vol, com: emp.filter(x=>x[0]!==f[0]).map(x=>x[0])},
+      tags:[...l.tags, ["new", "dividido com " + emp.filter(x=>x[0]!==f[0]).map(x=>x[0]).join(", ")]]});
+  });
+  return out.length ? out : [l];
 }
 const valor = l => l.vol * (l.V||1) * (l.custo ?? (l.pvp ? l.pvp*0.93 : 0));
 const ordena = arr => est.ordem==="alfa" ? arr.sort((a,b)=>a.artigo.localeCompare(b.artigo,"pt")) : arr.sort((a,b)=>b.b-a.b || a.artigo.localeCompare(b.artigo,"pt"));
@@ -405,7 +423,7 @@ function cartao(l, f, zero){
             ${alt(l)}</div>
           <div class="stepper">
             <button data-a="${esc(l.id)}" data-d="-1" aria-label="menos">−</button>
-            <div class="vol ${l.adj?'adj':''}"><b>${l.vol}</b><span>${l.adj?'sug. '+l.sug:(l.V>1?'vol de '+l.V:'unid.')}</span></div>
+            <div class="vol ${l.adj?'adj':''}"><b>${l.vol}</b><span>${l.parte?'de '+l.parte.total+' no total':(l.adj?'sug. '+l.sug:(l.V>1?'vol de '+l.V:'unid.'))}</span></div>
             <button data-a="${esc(l.id)}" data-d="1" aria-label="mais">+</button>
           </div>
         </div>
@@ -428,7 +446,7 @@ function render(){
   if (!fams.includes(filtro)) filtro = "Todos";
   $("familias").innerHTML = fams.map(f=>`<span class="chip ${f===filtro?'on':''}" data-v="${esc(f)}">${f}</span>`).join("");
   const daFam = linhas.filter(l => filtro==="Todos" || l.familia===filtro);
-  const pedir = daFam.filter(l => l.vol>0);
+  const pedir = daFam.filter(l => l.vol>0).flatMap(divide);
   const zeros = daFam.filter(l => l.vol===0 && l.temVendas && l.w.some(x=>x>0));
   const stats = {};
   pedir.forEach(l => { const s = (stats[l.forn] ||= {vol:0,n:0,eur:0,urg:0}); s.vol+=l.vol; s.n++; s.eur+=valor(l); if (l.urg) s.urg++; });
@@ -573,7 +591,7 @@ $("procura").addEventListener("keydown", e => {
 // ---------- PDF por fornecedor (todas as famílias desse fornecedor) ----------
 const EMPRESA = ["Melodias do Mar – Tabacaria, Unip. Lda", "C.C. E.Leclerc, Loja 4 - 3080-510 Figueira da Foz - NIF 507479122"];
 function linhasForn(f){
-  return ART.filter(a=>!a.so || a.so===enc).map(calcula).filter(l=>l.vol>0 && l.forn===f)
+  return ART.filter(a=>!a.so || a.so===enc).map(calcula).filter(l=>l.vol>0).flatMap(divide).filter(l=>l.forn===f)
     .sort((a,b)=>a.familia.localeCompare(b.familia,"pt") || a.artigo.localeCompare(b.artigo,"pt"));
 }
 function fazPDF(f){
@@ -669,7 +687,7 @@ async function pdfs(lista){
 }
 $("copiar").onclick = () => {
   if (fornSel) return pdfs([fornSel]);
-  const todas = ART.filter(a=>!a.so || a.so===enc).map(calcula).filter(l=>l.vol>0);
+  const todas = ART.filter(a=>!a.so || a.so===enc).map(calcula).filter(l=>l.vol>0).flatMap(divide);
   const fs = [...new Set(todas.map(l=>l.forn))].filter(f=>!f.startsWith("Sem"));
   const sem = todas.filter(l=>l.forn.startsWith("Sem")).length;
   pdfs(fs).then(()=>{ if (sem) toast(sem + " artigo(s) sem fornecedor ficaram de fora — usa o PDF dessa secção"); });
