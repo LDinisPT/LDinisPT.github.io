@@ -140,6 +140,10 @@ details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
 #setup input{width:100%;padding:11px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:15px var(--body);margin-bottom:8px}
 .feita{display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center}
 .feita p{font-size:12.5px;color:var(--muted);margin:0}
+.conf{border:2px solid var(--bad);border-radius:12px;padding:12px;background:color-mix(in srgb, var(--bad) 8%, var(--paper));text-align:left;width:100%;margin-top:8px}
+.conf p{font-size:13px;color:var(--ink);margin:6px 0 10px}
+.conf div{display:flex;gap:8px;justify-content:flex-end}
+.btn.danger{background:var(--bad);border-color:var(--bad);color:#fff}
 .beta{font-size:11px;font-weight:700;color:var(--accent-ink);background:var(--accent);border-radius:6px;padding:1px 6px;vertical-align:4px;margin-left:4px}
 </style>
 </head>
@@ -183,7 +187,12 @@ details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
     <p><b>Média 4 semanas</b>: olha para o habitual (recomendado). <b>Só este período</b>: repõe exatamente o que se vendeu.</p>
     <div class="seg" id="picos"><button data-v="ignorar" class="on">Ignorar picos</button><button data-v="incluir">Incluir picos</button></div>
     <p><b>Picos</b>: dias em que uma marca vendeu pelo menos 20 maços e mais do triplo do normal (alguém levou vários volumes). Por defeito o excesso não conta.</p>
-    <p style="margin-top:12px"><a class="btn" href="../">← Painel de vendas</a> <button class="btn" id="reset">Trocar chave</button> <button class="btn" id="limpar">Apagar ajustes guardados</button></p>
+    <p style="margin-top:12px"><a class="btn" href="../">← Painel de vendas</a> <button class="btn" id="reset">Trocar chave</button> <button class="btn" id="limpar">Apagar tudo o que está guardado</button></p>
+    <div class="conf" id="confLimpar" style="display:none">
+      <b>Apagar tudo?</b>
+      <p>Apaga os ajustes de <b>todas</b> as encomendas e também o "resto" guardado. A próxima encomenda calcula como se fosse a primeira. Não se pode desfazer.</p>
+      <div><button class="btn" id="limNao">Não</button> <button class="btn danger" id="limSim">Sim, apagar tudo</button></div>
+    </div>
   </details>
   <div class="lbl">Família</div>
   <div class="chips" id="familias"></div>
@@ -207,6 +216,12 @@ details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
   <div class="card feita">
     <button class="btn primary" id="feita">✓ Encomenda feita</button>
     <button class="btn" id="anular" style="display:none">↩ Anular "encomenda feita"</button>
+    <button class="btn" id="recomecar">↺ Recomeçar esta encomenda</button>
+    <div class="conf" id="confRec" style="display:none">
+      <b>Recomeçar a encomenda?</b>
+      <p>Apaga os ajustes + / −, os urgentes, os fornecedores escolhidos e os artigos adicionados à mão <b>desta encomenda</b>. Fica só a sugestão calculada pelas vendas. Não se pode desfazer.</p>
+      <div><button class="btn" id="recNao">Não</button> <button class="btn danger" id="recSim">Sim, recomeçar</button></div>
+    </div>
     <p id="feitaMsg">Carrega depois de fazer a encomenda: guarda o que fica por pedir (o "resto") para a próxima e limpa os ajustes.</p>
   </div>
 
@@ -686,7 +701,19 @@ $("anular").onclick = () => {
   if (est.feita) delete est.feita[enc];
   gravaEst(); render(); toast("Anulado — a encomenda voltou a ficar por fazer");
 };
-$("limpar").onclick = () => { est.ped = {}; est.resto = {}; est.restoDe = null; est.feita = {}; gravaEst(); load(); toast("Ajustes apagados"); };
+$("recomecar").onclick = () => { $("confRec").style.display = ""; $("confRec").scrollIntoView({behavior:"smooth", block:"center"}); };
+$("recNao").onclick = () => { $("confRec").style.display = "none"; };
+$("recSim").onclick = () => {
+  const p = pedAtual();
+  const novos = new Set((p.novos||[]).map(n=>n.id));
+  ART = ART.filter(a=>!novos.has(a.id));
+  est.ped[enc] = {aj:{}, urg:{}, novos:[], forn:{}};
+  $("confRec").style.display = "none"; fornSel = null; verZeros = false; filtro = "Tabaco Novidade";
+  gravaEst(); render(); toast("Encomenda recomeçada — só a sugestão das vendas");
+};
+$("limpar").onclick = () => { $("confLimpar").style.display = ""; };
+$("limNao").onclick = () => { $("confLimpar").style.display = "none"; };
+$("limSim").onclick = () => { est.ped = {}; est.resto = {}; est.restoDe = null; est.feita = {}; est.antes = {}; $("confLimpar").style.display = "none"; gravaEst(); load(); toast("Tudo apagado"); };
 $("reset").onclick = () => { delTok(); showSetup(); };
 $("save").onclick = () => { const v=$("tok").value.trim(); if(!v) return; setTok(v); $("tok").value=""; load(); };
 $("refresh").onclick = () => load();
