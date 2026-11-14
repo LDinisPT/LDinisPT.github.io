@@ -541,7 +541,21 @@ function fazPDF(f){
     styles:{font:"helvetica", fontSize:10, cellPadding:{top:1.05,bottom:1.05,left:6,right:0}, textColor:[20,20,20]},
     columnStyles:{1:{halign:"right", cellWidth:30}},
     didParseCell: d => { if (d.column.index===0 && String(d.cell.raw).includes("(URGENTE)")) { d.cell.styles.fontStyle="bold"; d.cell.styles.textColor=[163,69,111]; } },
-    willDrawPage: d => { if (doc.internal.getNumberOfPages() > 1) cabecalho(); }
+    willDrawPage: d => { if (doc.internal.getNumberOfPages() > 1) cabecalho(); },
+    didDrawCell: d => {
+      // pontinhos entre o artigo e os volumes
+      if (d.section!=="body" || d.column.index!==0 || !Array.isArray(d.row.raw) || d.row.raw.length<2) return;
+      const c = d.cell, fs = c.styles.fontSize;
+      doc.setFontSize(fs); doc.setFont("helvetica", c.styles.fontStyle || "normal");
+      const txt = Array.isArray(c.text) ? c.text[c.text.length-1] : String(c.text);
+      const x0 = c.x + c.padding("left") + doc.getTextWidth(txt) + 2;
+      const volTxt = String(d.row.raw[1]);
+      doc.setFont("helvetica","normal");
+      const x1 = c.x + c.width + d.table.columns[1].width - doc.getTextWidth(volTxt) - 2;
+      const yb = c.y + c.height - c.padding("bottom") - 0.9;
+      doc.setFillColor(150,150,150);
+      for (let x = x0; x < x1; x += 1.6) doc.circle(x, yb, 0.18, "F");
+    }
   });
   let y = doc.lastAutoTable.finalY + 4;
   if (y + 13 > H - 30) { doc.addPage(); cabecalho(); y = 44; }
