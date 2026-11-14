@@ -503,34 +503,63 @@ function fazPDF(f){
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({unit:"mm", format:"a4"});
   const it = linhasForn(f);
-  const W = 210, M = 14;
-  doc.setFont("helvetica","bold"); doc.setFontSize(15); doc.text("Nota de encomenda", M, 18);
-  doc.setFontSize(11); doc.text(NOMEF[f] || f, M, 25);
-  doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(90);
-  doc.text(EMPRESA[0], W-M, 14, {align:"right"}); doc.text(EMPRESA[1], W-M, 19, {align:"right"});
-  const dia = (dow(enc)===0?"Domingo ":"Quarta-feira ") + D(enc).toLocaleDateString("pt-PT");
-  doc.text("Encomenda de " + dia + (CORTE?" - pronta às "+CORTE+"h":""), W-M, 24, {align:"right"});
-  doc.text("Emitida a " + new Date().toLocaleString("pt-PT",{dateStyle:"short",timeStyle:"short"}), W-M, 29, {align:"right"});
-  doc.setTextColor(0);
-  const body = []; let fam = null, totV = 0, totU = 0, urg = 0;
+  const W = 210, H = 297, M = 16;
+  const TEAL = [13,110,122], DARK = [15,41,51], SOFT = [232,242,245], MUT = [110,110,110];
+  const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  const DIASS = ["Domingo","Segunda-feira","Terça-feira","Quarta-feira","Quinta-feira","Sexta-feira","Sábado"];
+  const de = D(enc);
+  const cabecalho = () => {
+    doc.setFillColor(...TEAL); doc.rect(0, 0, W, 31, "F");
+    doc.setTextColor(255);
+    doc.setFont("helvetica","bold"); doc.setFontSize(15); doc.text("MELODIAS DO MAR – TABACARIA", M, 11.5);
+    doc.setFont("helvetica","normal"); doc.setFontSize(8.5);
+    doc.text("Melodias do Mar – Tabacaria, Unip. Lda  ·  NIF 507479122", M, 18);
+    doc.text("Centro Comercial E.Leclerc, Loja 4  ·  3080-510 Figueira da Foz", M, 23);
+    doc.setFont("helvetica","bold"); doc.setFontSize(10.5); doc.text("NOTA DE ENCOMENDA", W-M, 11.5, {align:"right"});
+    doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.text(DIASS[de.getDay()] + (CORTE ? " · pronta às " + CORTE + "h" : ""), W-M, 18, {align:"right"});
+    doc.setFont("helvetica","bold"); doc.setFontSize(12); doc.text(de.getDate() + " de " + MESES[de.getMonth()] + " de " + de.getFullYear(), W-M, 24.5, {align:"right"});
+    doc.setTextColor(0);
+  };
+  cabecalho();
+  // fornecedor
+  doc.setFontSize(7.5); doc.setTextColor(...MUT); doc.setFont("helvetica","normal"); doc.text("Fornecedor", M, 40);
+  doc.setFillColor(...SOFT); doc.setDrawColor(...TEAL); doc.setLineWidth(0.3); doc.rect(M, 43, W-2*M, 11, "FD");
+  doc.setTextColor(0); doc.setFont("helvetica","bold"); doc.setFontSize(11); doc.text(NOMEF[f] || f, M+5, 50);
+  // titulo da secção
+  doc.setFontSize(13); doc.text("Artigos a encomendar", M, 66);
+  doc.setLineWidth(0.5); doc.setDrawColor(0); doc.line(M, 68.5, W-M, 68.5);
+
+  const body = []; let fam = null, totV = 0, urg = 0;
   for (const l of it){
-    if (l.familia !== fam){ fam = l.familia; body.push([{content: fam, colSpan:2, styles:{fillColor:[227,239,241], fontStyle:"bold", textColor:[12,110,122]}}]); }
-    const u = l.vol * (l.V||1); totV += l.vol; totU += u; if (l.urg) urg++;
-    body.push([l.artigo + (l.urg ? "  (URGENTE)" : ""), String(l.vol)]);
+    if (l.familia !== fam){ fam = l.familia; body.push([{content: fam.toUpperCase(), colSpan:2, styles:{fontStyle:"bold", fontSize:8, textColor:TEAL, cellPadding:{top:2.6,bottom:0.6,left:0}}}]); }
+    totV += l.vol; if (l.urg) urg++;
+    body.push([l.artigo + (l.urg ? "  (URGENTE)" : ""), l.vol + " vol"]);
   }
   doc.autoTable({
-    startY: 36, margin:{left:M, right:M},
-    head: [["Artigo","Volumes"]],
-    body,
-    foot: [[{content:"Total", styles:{halign:"right"}}, {content:String(totV), styles:{halign:"right"}}]],
-    styles:{font:"helvetica", fontSize:9.5, cellPadding:1.8, lineColor:[214,224,227], lineWidth:0.1},
-    footStyles:{fillColor:[243,246,247], textColor:[15,42,51], fontStyle:"bold"},
-    columnStyles:{1:{halign:"right", cellWidth:28, fontStyle:"bold"}},
-    headStyles:{fillColor:[12,110,122], textColor:255, halign:"left"},
-    didParseCell: d => { if (d.section==="body" && d.column.index===0 && String(d.cell.raw).includes("(URGENTE)")) { d.cell.styles.fontStyle="bold"; d.cell.styles.textColor=[163,69,111]; } },
-    didDrawPage: d => { doc.setFontSize(8); doc.setTextColor(140); doc.text("Página " + doc.internal.getNumberOfPages(), W-M, 290, {align:"right"}); }
+    startY: 70, margin:{left:M, right:M, top:38, bottom:22},
+    body, theme:"plain",
+    styles:{font:"helvetica", fontSize:10, cellPadding:{top:1.05,bottom:1.05,left:6,right:0}, textColor:[20,20,20]},
+    columnStyles:{1:{halign:"right", cellWidth:30}},
+    didParseCell: d => { if (d.column.index===0 && String(d.cell.raw).includes("(URGENTE)")) { d.cell.styles.fontStyle="bold"; d.cell.styles.textColor=[163,69,111]; } },
+    willDrawPage: d => { if (doc.internal.getNumberOfPages() > 1) cabecalho(); }
   });
-  if (urg){ doc.setFontSize(9); doc.setTextColor(163,69,111); doc.text(urg + " artigo(s) URGENTE(S) — entrega o mais depressa possível, por favor.", M, doc.lastAutoTable.finalY + 7); }
+  let y = doc.lastAutoTable.finalY + 4;
+  if (y + 13 > H - 30) { doc.addPage(); cabecalho(); y = 44; }
+  doc.setFillColor(...DARK); doc.rect(M, y, W-2*M, 13, "F");
+  doc.setTextColor(255); doc.setFont("helvetica","bold"); doc.setFontSize(12.5);
+  doc.text("TOTAL", M+6, y+8.5); doc.text(totV + " volumes", W-M-6, y+8.5, {align:"right"});
+  doc.setTextColor(0);
+  if (urg){ doc.setFont("helvetica","normal"); doc.setFontSize(9.5); doc.setTextColor(163,69,111);
+    doc.text(urg + (urg>1 ? " artigos urgentes" : " artigo urgente") + " — entrega o mais depressa possível, por favor.", M, y+21); doc.setTextColor(0); }
+  // assinaturas e rodapé em todas as folhas
+  const n = doc.internal.getNumberOfPages();
+  const ger = "Gerado em " + new Date().toLocaleDateString("pt-PT") + ", " + new Date().toLocaleTimeString("pt-PT");
+  for (let k=1; k<=n; k++){
+    doc.setPage(k);
+    if (k===n){ doc.setDrawColor(0); doc.setLineWidth(0.3); doc.line(M, H-24, M+64, H-24); doc.line(W-M-64, H-24, W-M, H-24);
+      doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.text("Responsável", M, H-19.5); doc.text("Recebido", W-M-64, H-19.5); }
+    doc.setFont("helvetica","normal"); doc.setFontSize(7.5); doc.setTextColor(...MUT); doc.text(ger, M, H-9); doc.text("Folha " + k + " de " + n, W-M, H-9, {align:"right"}); doc.setTextColor(0);
+  }
   const nome = "Encomenda_" + f.replace(/[^A-Za-z0-9]+/g,"_") + "_" + enc + ".pdf";
   return {doc, nome, n: it.length};
 }
