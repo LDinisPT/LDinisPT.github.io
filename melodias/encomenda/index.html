@@ -514,20 +514,20 @@ function fazPDF(f){
   doc.setTextColor(0);
   const body = []; let fam = null, totV = 0, totU = 0, urg = 0;
   for (const l of it){
-    if (l.familia !== fam){ fam = l.familia; body.push([{content: fam, colSpan:5, styles:{fillColor:[227,239,241], fontStyle:"bold", textColor:[12,110,122]}}]); }
+    if (l.familia !== fam){ fam = l.familia; body.push([{content: fam, colSpan:2, styles:{fillColor:[227,239,241], fontStyle:"bold", textColor:[12,110,122]}}]); }
     const u = l.vol * (l.V||1); totV += l.vol; totU += u; if (l.urg) urg++;
-    body.push([l.manual ? "—" : l.id, l.artigo + (l.urg ? "  (URGENTE)" : ""), String(l.vol), l.V>1 ? String(l.V) : "1", String(u)]);
+    body.push([l.artigo + (l.urg ? "  (URGENTE)" : ""), String(l.vol)]);
   }
   doc.autoTable({
     startY: 36, margin:{left:M, right:M},
-    head: [["Código","Artigo","Volumes","Un./vol","Total un."]],
+    head: [["Artigo","Volumes"]],
     body,
-    foot: [[{content:"Total", colSpan:2, styles:{halign:"right"}}, {content:String(totV), styles:{halign:"right"}}, "", {content:String(totU), styles:{halign:"right"}}]],
+    foot: [[{content:"Total", styles:{halign:"right"}}, {content:String(totV), styles:{halign:"right"}}]],
     styles:{font:"helvetica", fontSize:9.5, cellPadding:1.8, lineColor:[214,224,227], lineWidth:0.1},
-    headStyles:{fillColor:[12,110,122], textColor:255},
     footStyles:{fillColor:[243,246,247], textColor:[15,42,51], fontStyle:"bold"},
-    columnStyles:{0:{cellWidth:32, textColor:[90,90,90]}, 2:{halign:"right", cellWidth:20, fontStyle:"bold"}, 3:{halign:"right", cellWidth:18}, 4:{halign:"right", cellWidth:22}},
-    didParseCell: d => { if (d.section==="body" && d.column.index===1 && String(d.cell.raw).includes("(URGENTE)")) { d.cell.styles.fontStyle="bold"; d.cell.styles.textColor=[163,69,111]; } },
+    columnStyles:{1:{halign:"right", cellWidth:28, fontStyle:"bold"}},
+    headStyles:{fillColor:[12,110,122], textColor:255, halign:"left"},
+    didParseCell: d => { if (d.section==="body" && d.column.index===0 && String(d.cell.raw).includes("(URGENTE)")) { d.cell.styles.fontStyle="bold"; d.cell.styles.textColor=[163,69,111]; } },
     didDrawPage: d => { doc.setFontSize(8); doc.setTextColor(140); doc.text("Página " + doc.internal.getNumberOfPages(), W-M, 290, {align:"right"}); }
   });
   if (urg){ doc.setFontSize(9); doc.setTextColor(163,69,111); doc.text(urg + " artigo(s) URGENTE(S) — entrega o mais depressa possível, por favor.", M, doc.lastAutoTable.finalY + 7); }
