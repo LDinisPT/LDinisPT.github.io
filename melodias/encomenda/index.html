@@ -13,6 +13,8 @@
 <link rel="apple-touch-icon" href="icon-180.png">
 <link rel="icon" type="image/png" href="icon-192.png">
 <title>Melodias · Encomenda</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js" defer></script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
 :root{
@@ -83,6 +85,8 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;
 .fhead{display:flex;justify-content:space-between;align-items:baseline;margin:10px 0 0;padding-left:9px;border-left:5px solid var(--c)}
 .fhead h2{font-family:var(--display);font-size:18px;margin:0}
 .fhead small{color:var(--muted);font-family:var(--mono);font-size:12.5px}
+.fhead .pdf{margin-left:auto;margin-right:8px;padding:5px 9px;font-size:12px}
+.fhead{gap:8px}
 .item{background:var(--paper);border:1px solid var(--line);border-left:4px solid var(--c);border-radius:12px;padding:10px 10px 10px 12px}
 .row1{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .nome{font-weight:600;font-size:15px}
@@ -230,7 +234,7 @@ $("theme").onclick = () => {
 };
 
 // ---------- estado ----------
-let DADOS = null, ART = [], DIAS = [], IX = {}, HOJE = "", ENCS = [];
+let DADOS = null, ART = [], DIAS = [], IX = {}, HOJE = "", ENCS = [], CORTE = 0, NOMEF = {};
 let enc = null, filtro = "Tabaco Novidade", fornSel = null, verZeros = false;
 let est = lerEst();
 est.ordem = est.ordem || "alfa"; est.base = est.base || "media"; est.picos = est.picos || "ignorar";
@@ -251,14 +255,17 @@ const norm = t => t.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase();
 function pedAtual(){ const p = (est.ped[enc] ||= {aj:{}, urg:{}, novos:[]}); return p; }
 
 function nomeForn(id){
-  if (CURTO[id]) return CURTO[id];
-  const n = (DADOS.forn && DADOS.forn[id]) || ("Fornecedor " + id);
+  const full = (DADOS.forn && DADOS.forn[id]) || ("Fornecedor " + id);
+  const curto = CURTO[id] || full.replace(/,?\s*(Lda|S\.?A|Unipessoal|Unip)\.?.*$/i,"").split(/\s+/).slice(0,3).join(" ");
+  NOMEF[curto] = full;
+  return curto;
+  const n = full;
   return n.replace(/,?\s*(Lda|S\.?A|Unipessoal|Unip)\.?.*$/i,"").split(/\s+/).slice(0,3).join(" ");
 }
 function cor(f){ if (f.startsWith("Sem")) return "#7d8e96"; if (CORES[f]) return CORES[f]; let h=0; for (const c of f) h=(h*31+c.charCodeAt(0))>>>0; return PAL[h%PAL.length]; }
 
 function prepara(d){
-  DADOS = d; DIAS = d.dias; HOJE = d.hoje; IX = {}; DIAS.forEach((x,i)=>IX[x]=i);
+  DADOS = d; DIAS = d.dias; HOJE = d.hoje; CORTE = d.corte || 0; IX = {}; DIAS.forEach((x,i)=>IX[x]=i);
   const zeros = DIAS.map(()=>0);
   ART = d.art.map(a => {
     let v = a.v;
@@ -276,13 +283,31 @@ function prepara(d){
     if (!ART.find(a=>a.id===n.id)) ART.push({id:n.id, artigo:n.artigo, familia:"Adicionados à mão", pvp:0, vol:n.vol||10, forns:[[n.forn,null]], q:zeros, manual:true, lim:1e9, norm:0, temVendas:false, so:data});
   }
   // próximas encomendas: domingo e quarta
-  ENCS = []; for (let i=0;i<8 && ENCS.length<2;i++){ const x=add(HOJE,i); if (dow(x)===0||dow(x)===3) ENCS.push(x); }
-  if (!enc || !ENCS.includes(enc)) enc = ENCS[0];
+  ENCS = [];
+  if (CORTE) {
+    let ult = null; for (let i=1;i<8;i++){ const x=add(HOJE,-i); if (dow(x)===0||dow(x)===3){ ult=x; break; } }
+    let prox = null; for (let i=0;i<8;i++){ const x=add(HOJE,i); if (dow(x)===0||dow(x)===3){ prox=x; break; } }
+    ENCS = [ult, prox];
+    // logo a seguir às 19h do dia da encomenda, abre na que acabou de fechar
+    const real = iso(new Date());
+    if (!enc || !ENCS.includes(enc)) enc = (real === ult) ? ult : prox;
+  } else {
+    for (let i=0;i<8 && ENCS.length<2;i++){ const x=add(HOJE,i); if (dow(x)===0||dow(x)===3) ENCS.push(x); }
+    if (!enc || !ENCS.includes(enc)) enc = ENCS[0];
+  }
   // limpar encomendas antigas guardadas
   for (const k of Object.keys(est.ped)) if (k < add(HOJE,-14)) delete est.ped[k];
 }
 
-function janela(o,k){ const n = dow(o)===0 ? 4 : 3, out=[]; for (let i=n;i>=1;i--) out.push(add(o,-i-7*k)); return out; }
+function janela(o,k){
+  const n = dow(o)===0 ? 4 : 3, out=[];
+  // com corte às 19h: cada "dia" vai das 19h da véspera às 19h; a encomenda inclui o próprio dia
+  const s = CORTE ? 1 : 0;
+  for (let i=n;i>=1;i--) out.push(add(o,-i+s-7*k));
+  return out;
+}
+const ini = d => CORTE ? fmt(add(d,-1)) + " às " + CORTE + "h" : fmt(d);
+const fim = d => CORTE ? fmt(d) + " às " + CORTE + "h" : fmt(d);
 function soma(a,dias){
   let tot=0, ex=0;
   for (const d of dias){ const i=IX[d]; if (i===undefined) continue; const q=a.q[i]; tot+=q; if (q>=a.lim) ex+=q-a.norm; }
@@ -331,13 +356,13 @@ function segOn(id,v){ document.querySelectorAll("#"+id+" button").forEach(b=>b.c
 
 function render(){
   const p = pedAtual();
-  $("encomenda").innerHTML = ENCS.map(e=>`<button data-v="${e}" class="${e===enc?'on':''}">${dow(e)===0?'Domingo':'Quarta'} ${dm(e)}</button>`).join("");
+  $("encomenda").innerHTML = ENCS.map(e=>`<button data-v="${e}" class="${e===enc?'on':''}">${dow(e)===0?'Domingo':'Quarta'} ${dm(e)}${CORTE && e<HOJE?' ✓':''}</button>`).join("");
   segOn("ordem",est.ordem); segOn("base",est.base); segOn("picos",est.picos);
   const j0 = janela(enc,0), comeca = j0[0] <= HOJE, jUse = comeca ? j0 : janela(enc,1), parcial = jUse[jUse.length-1] >= HOJE;
-  $("periodo").innerHTML = `Repõe as vendas de <b>${fmt(jUse[0])}</b> a <b>${fmt(jUse[jUse.length-1])}</b>${comeca?'':' (semana passada)'}`;
+  $("periodo").innerHTML = `Repõe as vendas de <b>${ini(jUse[0])}</b> a <b>${fim(jUse[jUse.length-1])}</b>${comeca?'':' (semana passada)'}${CORTE?` · pronta às ${CORTE}h de ${dow(enc)===0?'domingo':'quarta'}`:''}`;
   $("aviso").innerHTML = !comeca
-    ? `<div class="aviso">O período desta encomenda (${fmt(j0[0])} a ${fmt(j0[j0.length-1])}) ainda não começou — por agora mostra o mesmo período da semana passada.</div>`
-    : parcial ? `<div class="aviso">O período ainda está a decorrer (vendas até ${DADOS.atualizado.slice(11,16)}). A média usa as 3 semanas anteriores; no dia da encomenda fica completo.</div>` : "";
+    ? `<div class="aviso">O período desta encomenda (${ini(j0[0])} a ${fim(j0[j0.length-1])}) ainda não começou — por agora mostra o mesmo período da semana passada.</div>`
+    : parcial ? `<div class="aviso">O período ainda está a decorrer (vendas até ${DADOS.atualizado.slice(11,16)}). A média usa as 3 semanas anteriores; ${CORTE?`fica completo com a atualização das ${CORTE}h.`:'no dia da encomenda fica completo.'}</div>` : "";
 
   const linhas = ART.filter(a=>!a.so || a.so===enc).map(calcula);
   const fams = ["Todos", ...[...new Set(linhas.filter(l=>l.temVendas||l.manual||l.adj).map(l=>l.familia))].sort((a,b)=>a.localeCompare(b,"pt"))];
@@ -368,7 +393,7 @@ function render(){
   for (const f of mostrar){
     const itens = ordena(porF[f]||[]); if (!itens.length) continue;
     const s = stats[f] || {vol:0,eur:0};
-    html += `<div class="fhead" style="--c:${cor(f)}"><h2>${f}</h2><small>${s.vol} vol · ≈ ${eur0(s.eur)}</small></div>`;
+    html += `<div class="fhead" style="--c:${cor(f)}"><h2>${f}</h2><button class="btn pdf" data-pdf="${esc(f)}">📄 PDF</button><small>${s.vol} vol · ≈ ${eur0(s.eur)}</small></div>`;
     for (const l of itens){
       const mx = Math.max(...l.w,1);
       const spark = [...l.w].reverse().map((x,i)=>`<i class="${i===3?'last':''}" style="height:${Math.max(2,x/mx*24)}px"></i>`).join("");
@@ -406,7 +431,7 @@ function render(){
   $("kEur").textContent = eur0(totEur);
   $("bTot").textContent = sv + " vol · ≈ " + eur0(se);
   $("bForn").textContent = fornSel || "todos os fornecedores";
-  $("copiar").textContent = fornSel ? "Copiar " + fornSel : "Copiar tudo";
+  $("copiar").textContent = fornSel ? "📄 PDF " + fornSel : "📄 PDF por fornecedor";
   $("feitaMsg").textContent = est.feita && est.feita[enc]
     ? "Marcada como feita às " + est.feita[enc] + ". Podes voltar a carregar se mudares alguma coisa."
     : "Carrega depois de fazer a encomenda: guarda o que fica por pedir (o \"resto\") para a próxima.";
@@ -425,6 +450,7 @@ $("forns").onclick = e => { const c=e.target.closest(".fcard"); if(!c) return; f
   try { $("lista").scrollIntoView({behavior:"smooth", block:"start"}); } catch(_){} };
 $("lista").onclick = e => {
   if (e.target.closest("#zeros")) { verZeros=!verZeros; render(); return; }
+  const pb = e.target.closest("button[data-pdf]"); if (pb) { pdfs([pb.dataset.pdf.replace(/&amp;/g,"&")]); return; }
   const p = pedAtual();
   const u = e.target.closest("button[data-u]");
   if (u) { const id=u.dataset.u; if (p.urg[id]) delete p.urg[id]; else p.urg[id]=true; gravaEst(); render(); toast(p.urg[id]?"Passou para a Bel (urgente)":"Voltou ao fornecedor normal"); return; }
@@ -467,17 +493,67 @@ $("res").onclick = e => {
   toast("Adicionado: " + a.artigo);
 };
 
-$("copiar").onclick = async () => {
-  const {ordemF, pedir, stats} = window._lista;
-  let txt = "Encomenda tabaco – " + (dow(enc)===0?"domingo ":"quarta ") + dm(enc) + "\n";
-  for (const f of ordemF){
-    const it = pedir.filter(l=>l.forn===f).sort((a,b)=>a.artigo.localeCompare(b.artigo,"pt")); if (!it.length) continue;
-    txt += "\n" + f + " (" + stats[f].vol + " vol, ≈ " + eur0(stats[f].eur) + ")\n" + it.map(l=>`${l.vol} ${l.V>1?'vol':'un'}  ${l.artigo}${l.urg?'  (URGENTE)':''}`).join("\n") + "\n";
+// ---------- PDF por fornecedor (todas as famílias desse fornecedor) ----------
+const EMPRESA = ["Melodias do Mar – Tabacaria, Unip. Lda", "C.C. E.Leclerc, Loja 4 - 3080-510 Figueira da Foz - NIF 507479122"];
+function linhasForn(f){
+  return ART.filter(a=>!a.so || a.so===enc).map(calcula).filter(l=>l.vol>0 && l.forn===f)
+    .sort((a,b)=>a.familia.localeCompare(b.familia,"pt") || a.artigo.localeCompare(b.artigo,"pt"));
+}
+function fazPDF(f){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:"mm", format:"a4"});
+  const it = linhasForn(f);
+  const W = 210, M = 14;
+  doc.setFont("helvetica","bold"); doc.setFontSize(15); doc.text("Nota de encomenda", M, 18);
+  doc.setFontSize(11); doc.text(NOMEF[f] || f, M, 25);
+  doc.setFont("helvetica","normal"); doc.setFontSize(9); doc.setTextColor(90);
+  doc.text(EMPRESA[0], W-M, 14, {align:"right"}); doc.text(EMPRESA[1], W-M, 19, {align:"right"});
+  const dia = (dow(enc)===0?"Domingo ":"Quarta-feira ") + D(enc).toLocaleDateString("pt-PT");
+  doc.text("Encomenda de " + dia + (CORTE?" - pronta às "+CORTE+"h":""), W-M, 24, {align:"right"});
+  doc.text("Emitida a " + new Date().toLocaleString("pt-PT",{dateStyle:"short",timeStyle:"short"}), W-M, 29, {align:"right"});
+  doc.setTextColor(0);
+  const body = []; let fam = null, totV = 0, totU = 0, urg = 0;
+  for (const l of it){
+    if (l.familia !== fam){ fam = l.familia; body.push([{content: fam, colSpan:5, styles:{fillColor:[227,239,241], fontStyle:"bold", textColor:[12,110,122]}}]); }
+    const u = l.vol * (l.V||1); totV += l.vol; totU += u; if (l.urg) urg++;
+    body.push([l.manual ? "—" : l.id, l.artigo + (l.urg ? "  (URGENTE)" : ""), String(l.vol), l.V>1 ? String(l.V) : "1", String(u)]);
   }
-  try { await navigator.clipboard.writeText(txt); toast("Lista copiada"); }
-  catch(_) { toast("Não deu para copiar"); }
+  doc.autoTable({
+    startY: 36, margin:{left:M, right:M},
+    head: [["Código","Artigo","Volumes","Un./vol","Total un."]],
+    body,
+    foot: [[{content:"Total", colSpan:2, styles:{halign:"right"}}, {content:String(totV), styles:{halign:"right"}}, "", {content:String(totU), styles:{halign:"right"}}]],
+    styles:{font:"helvetica", fontSize:9.5, cellPadding:1.8, lineColor:[214,224,227], lineWidth:0.1},
+    headStyles:{fillColor:[12,110,122], textColor:255},
+    footStyles:{fillColor:[243,246,247], textColor:[15,42,51], fontStyle:"bold"},
+    columnStyles:{0:{cellWidth:32, textColor:[90,90,90]}, 2:{halign:"right", cellWidth:20, fontStyle:"bold"}, 3:{halign:"right", cellWidth:18}, 4:{halign:"right", cellWidth:22}},
+    didParseCell: d => { if (d.section==="body" && d.column.index===1 && String(d.cell.raw).includes("(URGENTE)")) { d.cell.styles.fontStyle="bold"; d.cell.styles.textColor=[163,69,111]; } },
+    didDrawPage: d => { doc.setFontSize(8); doc.setTextColor(140); doc.text("Página " + doc.internal.getNumberOfPages(), W-M, 290, {align:"right"}); }
+  });
+  if (urg){ doc.setFontSize(9); doc.setTextColor(163,69,111); doc.text(urg + " artigo(s) URGENTE(S) — entrega o mais depressa possível, por favor.", M, doc.lastAutoTable.finalY + 7); }
+  const nome = "Encomenda_" + f.replace(/[^A-Za-z0-9]+/g,"_") + "_" + enc + ".pdf";
+  return {doc, nome, n: it.length};
+}
+async function pdfs(lista){
+  if (!window.jspdf || !window.jspdf.jsPDF) { toast("A carregar o gerador de PDF… tenta outra vez"); return; }
+  const feitos = lista.map(fazPDF).filter(x=>x.n>0);
+  if (!feitos.length) { toast("Nada a pedir"); return; }
+  const files = feitos.map(x=>new File([x.doc.output("blob")], x.nome, {type:"application/pdf"}));
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform==="MacIntel" && navigator.maxTouchPoints>1);
+  if (ios && navigator.canShare && navigator.canShare({files})) {
+    try { await navigator.share({files, title:"Encomenda tabaco"}); } catch(_){}
+    return;
+  }
+  for (const x of feitos){ x.doc.save(x.nome); await new Promise(r=>setTimeout(r,400)); }
+  toast(feitos.length===1 ? "PDF criado" : feitos.length + " PDFs criados");
+}
+$("copiar").onclick = () => {
+  if (fornSel) return pdfs([fornSel]);
+  const todas = ART.filter(a=>!a.so || a.so===enc).map(calcula).filter(l=>l.vol>0);
+  const fs = [...new Set(todas.map(l=>l.forn))].filter(f=>!f.startsWith("Sem"));
+  const sem = todas.filter(l=>l.forn.startsWith("Sem")).length;
+  pdfs(fs).then(()=>{ if (sem) toast(sem + " artigo(s) sem fornecedor ficaram de fora — usa o PDF dessa secção"); });
 };
-
 $("feita").onclick = () => {
   // guarda o resto de TODAS as famílias para a próxima encomenda
   const linhas = ART.filter(a=>!a.so || a.so===enc).map(calcula);
