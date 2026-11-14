@@ -122,6 +122,13 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;
   background:color-mix(in srgb, var(--warn) 18%, var(--paper));border-left:5px solid var(--warn)}
 .zhead h2{font-family:var(--display);font-size:17px;margin:0;color:var(--warn)}
 .zhead small{color:var(--muted);font-size:12.5px}
+.item.mex{border:2px solid var(--warn);border-left-width:6px;background:color-mix(in srgb, var(--warn) 9%, var(--paper))}
+.mexido{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;justify-content:space-between;margin:-2px 0 8px;padding:6px 8px;border-radius:8px;
+  background:var(--warn);color:#1b1400;font-size:13px}
+.mexido .desf{padding:4px 9px;font-size:12px;background:#fff;color:#1b1400;border-color:#fff}
+.alterados{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-radius:12px;
+  background:color-mix(in srgb, var(--warn) 16%, var(--paper));border:2px solid var(--warn);font-size:14px}
+.alterados .btn{padding:6px 10px}
 .item.zero{border-style:dashed;border-left-style:solid;border-left-color:var(--warn);background:color-mix(in srgb, var(--warn) 6%, var(--paper))}
 .item.zero .vol b{color:var(--muted)}
 details.opc summary{cursor:pointer;font-weight:600;font-size:14px}
@@ -144,6 +151,11 @@ details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
 .conf p{font-size:13px;color:var(--ink);margin:6px 0 10px}
 .conf div{display:flex;gap:8px;justify-content:flex-end}
 .btn.danger{background:var(--bad);border-color:var(--bad);color:#fff}
+.rev{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:20}
+.revc{background:var(--paper);border:2px solid var(--warn);border-radius:14px;padding:16px;max-width:480px;width:100%;max-height:80vh;overflow:auto}
+.revl{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--line);font-size:14px}
+.revl small{color:var(--muted)}
+.revl b{font-family:var(--mono)}
 .beta{font-size:11px;font-weight:700;color:var(--accent-ink);background:var(--accent);border-radius:6px;padding:1px 6px;vertical-align:4px;margin-left:4px}
 </style>
 </head>
@@ -211,6 +223,7 @@ details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
     <div class="seg" id="ordem"><button data-v="alfa" class="on">A–Z</button><button data-v="vendas">Mais vendidos</button></div>
   </div>
 
+  <div id="alterados"></div>
   <div id="lista" style="display:flex;flex-direction:column;gap:8px"></div>
 
   <div class="card feita">
@@ -235,6 +248,15 @@ details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
   <button class="btn primary" id="copiar">Copiar tudo</button>
 </div></div>
 <div class="toast" id="toast"></div>
+<div class="rev" id="rev" style="display:none"><div class="revc">
+  <b style="font-size:16px">Antes de criar os PDFs: confirma as alterações</b>
+  <p style="font-size:13px;color:var(--muted);margin:4px 0 8px">Estes artigos foram alterados à mão com o + / −. Se algum foi engano, carrega em Corrigir.</p>
+  <div id="revLista"></div>
+  <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+    <button class="btn" id="revNao">Corrigir</button>
+    <button class="btn primary" id="revSim">Está certo, criar PDFs</button>
+  </div>
+</div></div>
 
 <script>
 const REPO = "LDinisPT/melodias-dados";
@@ -266,7 +288,7 @@ $("theme").onclick = () => {
 
 // ---------- estado ----------
 let DADOS = null, ART = [], DIAS = [], IX = {}, HOJE = "", ENCS = [], CORTE = 0, NOMEF = {};
-let enc = null, filtro = "Tabaco Novidade", fornSel = null, verZeros = false;
+let enc = null, filtro = "Tabaco Novidade", fornSel = null, verZeros = false, soMexidos = false;
 let est = lerEst();
 est.ordem = est.ordem || "alfa"; est.base = est.base || "media"; est.picos = est.picos || "ignorar";
 est.resto = est.resto || {};      // {id: maços que transitam}
@@ -423,7 +445,10 @@ function cartao(l, f, zero){
       const ex = l.ws[0].ex;
       const det = (l.manual && !l.temVendas) ? "artigo novo — sem histórico de vendas"
         : `<span style="color:var(--ink)">${l.V>1||FAM_TAB.has(l.familia)?'Maços':'Unidades'}:</span> vendeu <em>${l.ws[0].tot}</em>${ex?` <span style="color:var(--warn)">(${ex} em pico${est.picos==="ignorar"?', não conta':''})</span>`:''} · média <em>${l.media.toFixed(0)}</em>${l.resto?` · resto <em>${l.resto>0?'+':''}${l.resto}</em>`:''} · fica <em>${l.novoResto>0?'+':''}${l.novoResto}</em>`;
-      return `<div class="item ${zero?'zero':''}" style="--c:${cor(f)}">
+      const mexido = l.adj !== 0 && l.temVendas;
+      const faixa = mexido ? `<div class="mexido">✋ Alterado à mão: sugestão era <b>${l.sug}</b>, ficou <b>${l.sug + l.adj < 0 ? 0 : l.sug + l.adj}</b> (${l.adj>0?'+':''}${l.adj})
+          <button class="btn desf" data-r="${esc(l.id)}">↺ Voltar à sugestão</button></div>` : "";
+      return `<div class="item ${zero?'zero':''} ${mexido?'mex':''}" style="--c:${cor(f)}">${faixa}
         <div class="row1">
           <div style="min-width:0"><div class="nome">${esc(l.artigo)}${zero?'<span class="tag t-fora">a 0</span>':''}${tags}</div>
             <div class="fam">${l.familia}${l.pvp?' · PVP '+eur(l.pvp):''}${l.custo?' · custo '+eur(l.custo,3)+' · margem '+l.mg.toFixed(1).replace(".",",")+'%':''}${l.vol?(valor(l)?' · ≈ '+eur0(valor(l)):' · sem preço'):''}</div>
@@ -474,7 +499,7 @@ function render(){
       <div class="fe">≈ ${eur0(s.eur)}${s.urg?' · '+s.urg+' urgente'+(s.urg>1?'s':''):''}</div></div>`; }
   $("forns").innerHTML = fh;
 
-  const vis = pedir;
+  const vis = soMexidos ? pedir.filter(l=>l.adj!==0 && l.temVendas) : pedir;
   const porF = {}; vis.forEach(l => (porF[l.forn] ||= []).push(l));
   const mostrar = fornSel ? [fornSel] : Object.keys(porF).sort((a,b)=>(stats[b]?.eur||0)-(stats[a]?.eur||0));
   let html = "";
@@ -486,7 +511,7 @@ function render(){
       html += cartao(l, f, false);
     }
   }
-  const zv = fornSel ? zeros.filter(l=>l.forn===fornSel) : zeros;
+  const zv = soMexidos ? [] : (fornSel ? zeros.filter(l=>l.forn===fornSel) : zeros);
   if (zv.length) {
     html += `<button class="zerosBtn ${verZeros?'on':''}" id="zeros">
       <span class="zi">${verZeros?'▲':'▼'}</span>
@@ -497,7 +522,11 @@ function render(){
       for (const l of ordena(zv.slice())) html += cartao(l, l.forn, true);
     }
   }
-  if (!html) html = `<div class="card zeros">Nada a pedir nesta família.</div>`;
+  if (!html) html = `<div class="card zeros">${soMexidos?'Nenhum artigo alterado à mão.':'Nada a pedir nesta família.'}</div>`;
+  const nMex = linhas.filter(l=>l.adj!==0 && l.temVendas).length;
+  $("alterados").innerHTML = nMex ? `<div class="alterados"><span>✋ <b>${nMex}</b> artigo${nMex>1?'s':''} alterado${nMex>1?'s':''} à mão nesta encomenda</span>
+    <button class="btn" id="verMex">${soMexidos?'Ver todos':'Ver só os alterados'}</button></div>` : "";
+  if (!nMex) soMexidos = false;
   $("lista").innerHTML = html;
 
   const sv = fornSel ? stats[fornSel].vol : totVol, se = fornSel ? stats[fornSel].eur : totEur;
@@ -527,9 +556,12 @@ $("picos").onclick = e => { const b=e.target.closest("button"); if(!b) return; e
 $("familias").onclick = e => { const c=e.target.closest(".chip"); if(!c) return; filtro=c.dataset.v; fornSel=null; verZeros=false; render(); };
 $("forns").onclick = e => { const c=e.target.closest(".fcard"); if(!c) return; fornSel=c.dataset.v||null; verZeros=false; render();
   try { $("lista").scrollIntoView({behavior:"smooth", block:"start"}); } catch(_){} };
+$("alterados").onclick = e => { if (e.target.closest("#verMex")) { soMexidos = !soMexidos; verZeros = false; render(); } };
 $("lista").onclick = e => {
   if (e.target.closest("#zeros")) { verZeros=!verZeros; render(); return; }
-  const pb = e.target.closest("button[data-pdf]"); if (pb) { pdfs([pb.dataset.pdf.replace(/&amp;/g,"&")]); return; }
+  const rb = e.target.closest("button[data-r]");
+  if (rb) { const p = pedAtual(); delete p.aj[rb.dataset.r]; gravaEst(); render(); toast("Voltou à sugestão"); return; }
+  const pb = e.target.closest("button[data-pdf]"); if (pb) { pdfsComRevisao([pb.dataset.pdf.replace(/&amp;/g,"&")]); return; }
   const p = pedAtual();
   const u = e.target.closest("button[data-u]");
   if (u) { const id=u.dataset.u; if (p.urg[id]) delete p.urg[id]; else p.urg[id]=true; gravaEst(); render(); toast(p.urg[id]?"Passou para a Bel (urgente)":"Voltou ao fornecedor normal"); return; }
@@ -684,6 +716,19 @@ function fazPDF(f){
   const nome = "Encomenda_" + f.replace(/[^A-Za-z0-9]+/g,"_") + "_" + enc + ".pdf";
   return {doc, nome, n: it.length};
 }
+// revisão das alterações à mão antes de criar os PDFs
+let revPend = null;
+function pdfsComRevisao(lista){
+  const linhas = ART.filter(a=>!a.so || a.so===enc).map(calcula).filter(l=>l.adj!==0 && l.temVendas);
+  const doLista = linhas.filter(l => (l.vol>0 ? divide(l) : [l]).some(x=>lista.includes(x.forn)) || (l.vol===0 && lista.includes(l.forn)));
+  if (!doLista.length) return pdfs(lista);
+  revPend = lista;
+  $("revLista").innerHTML = doLista.sort((a,b)=>a.artigo.localeCompare(b.artigo,"pt")).map(l =>
+    `<div class="revl"><span>${esc(l.artigo)}<br><small>${esc(l.forn)}</small></span><span>sugestão <b>${l.sug}</b> → <b>${l.vol}</b> (${l.adj>0?'+':''}${l.adj})</span></div>`).join("");
+  $("rev").style.display = "flex";
+}
+$("revNao").onclick = () => { $("rev").style.display = "none"; revPend = null; soMexidos = true; render(); try { $("alterados").scrollIntoView({behavior:"smooth", block:"start"}); } catch(_){} };
+$("revSim").onclick = () => { $("rev").style.display = "none"; const l = revPend; revPend = null; if (l) pdfs(l); };
 async function pdfs(lista){
   if (!window.jspdf || !window.jspdf.jsPDF) { toast("A carregar o gerador de PDF… tenta outra vez"); return; }
   const feitos = lista.map(fazPDF).filter(x=>x.n>0);
@@ -698,10 +743,11 @@ async function pdfs(lista){
   toast(feitos.length===1 ? "PDF criado" : feitos.length + " PDFs criados");
 }
 $("copiar").onclick = () => {
-  if (fornSel) return pdfs([fornSel]);
+  if (fornSel) return pdfsComRevisao([fornSel]);
   const todas = ART.filter(a=>!a.so || a.so===enc).map(calcula).filter(l=>l.vol>0).flatMap(divide);
   const fs = [...new Set(todas.map(l=>l.forn))].filter(f=>!f.startsWith("Sem"));
   const sem = todas.filter(l=>l.forn.startsWith("Sem")).length;
+  if (ART.filter(a=>!a.so || a.so===enc).map(calcula).some(l=>l.adj!==0 && l.temVendas)) return pdfsComRevisao(fs);
   pdfs(fs).then(()=>{ if (sem) toast(sem + " artigo(s) sem fornecedor ficaram de fora — usa o PDF dessa secção"); });
 };
 let confirmaFeita = 0;
