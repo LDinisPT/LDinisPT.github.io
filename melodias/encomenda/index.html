@@ -330,8 +330,10 @@ function prepara(d){
   for (const k of Object.keys(est.ped)) if (k < add(HOJE,-14)) delete est.ped[k];
 }
 
-function janela(o,k){
-  const n = dow(o)===0 ? 4 : 3, out=[];
+// fornecedores que só recebem encomenda uma vez por semana (dia da semana: 0 = domingo)
+const SEMANAL = {"EuroNovidades": 0};
+function janela(o,k,dias){
+  const n = dias || (dow(o)===0 ? 4 : 3), out=[];
   // com corte às 19h: cada "dia" vai das 19h da véspera às 19h; a encomenda inclui o próprio dia
   const s = CORTE ? 1 : 0;
   for (let i=n;i>=1;i--) out.push(add(o,-i+s-7*k));
@@ -347,9 +349,19 @@ function soma(a,dias){
 
 function calcula(a){
   const p = pedAtual();
-  const comeca = janela(enc,0)[0] <= HOJE, off = comeca ? 0 : 1;
-  const jw = janela(enc,off), parcial = jw[jw.length-1] >= HOJE;
-  const ws = [0,1,2,3].map(k=>soma(a, janela(enc,k+off)));
+  // fornecedor primeiro (o período depende dele)
+  const urg = !!p.urg[a.id];
+  const f0 = a.forns[0];
+  let forn = f0 ? f0[0] : "Sem compras recentes", custo = f0 ? f0[1] : null;
+  const esc_ = p.forn && p.forn[a.id];
+  if (esc_ && !urg) { const x = a.forns.find(f=>f[0]===esc_); forn = esc_; custo = x ? x[1] : null; }
+  if (urg) { const bel = a.forns.find(f=>f[0]==="Bel"); forn = "Bel"; if (bel) custo = bel[1]; }
+  const sem = SEMANAL[forn];
+  const foraDia = sem !== undefined && dow(enc) !== sem;      // ex.: EuroNovidades numa encomenda de quarta
+  const nd = sem !== undefined ? 7 : 0;                         // semanal: repõe a semana inteira
+  const comeca = janela(enc,0,nd)[0] <= HOJE, off = comeca ? 0 : 1;
+  const jw = janela(enc,off,nd), parcial = jw[jw.length-1] >= HOJE;
+  const ws = [0,1,2,3].map(k=>soma(a, janela(enc,k+off,nd)));
   const w = ws.map(x => est.picos==="ignorar" ? x.liq : x.tot);
   const V = a.vol || 1;
   const resto = (est.restoDe && est.restoDe < enc && est.resto[a.id]) || 0;
@@ -359,14 +371,8 @@ function calcula(a){
   const alvo = b + resto;
   const sug = Math.max(0, Math.round(alvo / V));
   const adj = p.aj[a.id] || 0;
-  const vol = Math.max(0, sug + adj);
-  const novoResto = a.manual ? 0 : alvo - vol*V;
-  const urg = !!p.urg[a.id];
-  const f0 = a.forns[0];
-  let forn = f0 ? f0[0] : "Sem compras recentes", custo = f0 ? f0[1] : null;
-  const esc_ = p.forn && p.forn[a.id];
-  if (esc_ && !urg) { const x = a.forns.find(f=>f[0]===esc_); forn = esc_; custo = x ? x[1] : null; }
-  if (urg) { const bel = a.forns.find(f=>f[0]==="Bel"); forn = "Bel"; if (bel) custo = bel[1]; }
+  const vol = foraDia ? 0 : Math.max(0, sug + adj);
+  const novoResto = (a.manual || foraDia) ? 0 : alvo - vol*V;
   const mg = (custo && a.pvp) ? (a.pvp-custo)/a.pvp*100 : null;
   const tags = [];
   if (a.manual || p.aj[a.id] && !a.temVendas) tags.push(["add","adicionado"]);
@@ -377,7 +383,8 @@ function calcula(a){
   else if (!parcial && media3>=3 && w[0]>media3*1.3) tags.push(["up","a subir"]);
   else if (!parcial && media3>=3 && w[0]<media3*0.7) tags.push(["down","a descer"]);
   if (ws[0].ex>0) tags.push(["fora","pico +"+ws[0].ex]);
-  return {...a, w, ws, media, b, sug, vol, adj, novoResto, forn, custo, mg, tags, V, resto, urg, parcial, comeca, escolhido: !!esc_};
+  if (sem !== undefined) tags.push(["new","semanal · só ao domingo"]);
+  return {...a, foraDia, semanal: sem !== undefined, w, ws, media, b, sug, vol, adj, novoResto, forn, custo, mg, tags, V, resto, urg, parcial, comeca, escolhido: !!esc_};
 }
 // preço igual (diferença < 0,1 cênt./maço) em vários fornecedores: divide os volumes entre eles
 function divide(l){
@@ -437,9 +444,12 @@ function render(){
   segOn("ordem",est.ordem); segOn("base",est.base); segOn("picos",est.picos);
   const j0 = janela(enc,0), comeca = j0[0] <= HOJE, jUse = comeca ? j0 : janela(enc,1), parcial = jUse[jUse.length-1] >= HOJE;
   $("periodo").innerHTML = `Repõe as vendas de <b>${ini(jUse[0])}</b> a <b>${fim(jUse[jUse.length-1])}</b>${comeca?'':' (semana passada)'}${CORTE?` · pronta às ${CORTE}h de ${dow(enc)===0?'domingo':'quarta'}`:''}`;
-  $("aviso").innerHTML = !comeca
+  $("aviso").innerHTML = (!comeca
     ? `<div class="aviso">O período desta encomenda (${ini(j0[0])} a ${fim(j0[j0.length-1])}) ainda não começou — por agora mostra o mesmo período da semana passada.</div>`
-    : parcial ? `<div class="aviso">O período ainda está a decorrer (vendas até ${DADOS.atualizado.slice(11,16)}). A média usa as 3 semanas anteriores; ${CORTE?`fica completo com a atualização das ${CORTE}h.`:'no dia da encomenda fica completo.'}</div>` : "";
+    : parcial ? `<div class="aviso">O período ainda está a decorrer (vendas até ${DADOS.atualizado.slice(11,16)}). A média usa as 3 semanas anteriores; ${CORTE?`fica completo com a atualização das ${CORTE}h.`:'no dia da encomenda fica completo.'}</div>` : "")
+    + (dow(enc)!==0
+      ? `<div class="aviso">A <b>EuroNovidades</b> só recebe encomenda ao domingo — nesta encomenda de quarta não aparece. No domingo repõe a semana inteira.</div>`
+      : `<div class="aviso">A <b>EuroNovidades</b> é só ao domingo: para ela, esta encomenda repõe a semana inteira (de domingo a domingo, às ${CORTE||19}h).</div>`);
 
   const linhas = ART.filter(a=>!a.so || a.so===enc).map(calcula);
   const fams = ["Todos", ...[...new Set(linhas.filter(l=>l.temVendas||l.manual||l.adj).map(l=>l.familia))].sort((a,b)=>a.localeCompare(b,"pt"))];
@@ -447,7 +457,8 @@ function render(){
   $("familias").innerHTML = fams.map(f=>`<span class="chip ${f===filtro?'on':''}" data-v="${esc(f)}">${f}</span>`).join("");
   const daFam = linhas.filter(l => filtro==="Todos" || l.familia===filtro);
   const pedir = daFam.filter(l => l.vol>0).flatMap(divide);
-  const zeros = daFam.filter(l => l.vol===0 && l.temVendas && l.w.some(x=>x>0));
+  const zeros = daFam.filter(l => l.vol===0 && !l.foraDia && l.temVendas && l.w.some(x=>x>0));
+  const nSemanal = daFam.filter(l => l.foraDia && l.w.some(x=>x>0)).length;
   const stats = {};
   pedir.forEach(l => { const s = (stats[l.forn] ||= {vol:0,n:0,eur:0,urg:0}); s.vol+=l.vol; s.n++; s.eur+=valor(l); if (l.urg) s.urg++; });
   const ordemF = Object.keys(stats).sort((a,b)=>a.startsWith("Sem")?1:b.startsWith("Sem")?-1:stats[b].eur-stats[a].eur);
@@ -708,7 +719,10 @@ $("feita").onclick = () => {
   // guarda o resto de TODAS as famílias para a próxima encomenda
   const linhas = ART.filter(a=>!a.so || a.so===enc).map(calcula);
   const r = {};
-  for (const l of linhas) if (!l.manual && l.novoResto) r[l.id] = l.novoResto;
+  for (const l of linhas) {
+    if (l.foraDia) { if (est.resto && est.resto[l.id]) r[l.id] = est.resto[l.id]; continue; }   // semanais: mantém o resto até domingo
+    if (!l.manual && l.novoResto) r[l.id] = l.novoResto;
+  }
   est.resto = r; est.restoDe = enc;
   est.feita = est.feita || {}; est.feita[enc] = new Date().toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"});
   gravaEst(); render(); toast("Encomenda marcada como feita ✓");
