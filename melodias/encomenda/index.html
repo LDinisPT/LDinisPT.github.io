@@ -178,7 +178,7 @@ details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
 
   <div class="lbl">Falta alguma coisa?</div>
   <div class="add">
-    <input id="procura" type="search" placeholder="🔍 Procurar ou adicionar artigo…" autocomplete="off">
+    <input id="procura" type="search" placeholder="🔍 Procurar artigo ou passar o código de barras…" autocomplete="off">
     <div class="res" id="res"></div>
   </div>
 
@@ -272,7 +272,7 @@ function prepara(d){
     if (FAM_TAB.has(a.f)) { if (!v || v < 5 || (v > 10 && v % 10 === 0)) v = 10; }
     else v = v || 1;
     const forns = (a.c||[]).map(x=>[nomeForn(x[0]), x[1]]).sort((p,q)=>p[1]-q[1]);
-    const o = {id:a.i, artigo:a.a, familia:a.f, pvp:a.p||0, vol:v, forns, q:a.q||zeros, temVendas:!!a.q};
+    const o = {id:a.i, bc:a.b||"", artigo:a.a, familia:a.f, pvp:a.p||0, vol:v, forns, q:a.q||zeros, temVendas:!!a.q};
     const comp = DIAS.filter(x=>x<HOJE).map(x=>o.q[IX[x]]).sort((x,y)=>x-y);
     const p75 = comp[Math.floor(comp.length*0.75)] || 0;
     o.lim = Math.max(3*p75, p75+20, 20); o.norm = Math.ceil(p75);
@@ -462,7 +462,8 @@ const FORNS_LISTA = ["Mid Sid","Valente & Neto","Bel","Logista","EuroNovidades",
 function mostraRes(){
   const t = $("procura").value.trim(); if (t.length<2){ $("res").innerHTML=""; return; }
   const n = norm(t);
-  const hits = ART.filter(a=>!a.manual && norm(a.artigo).includes(n)).sort((a,b)=>(b.temVendas-a.temVendas)||a.artigo.localeCompare(b.artigo,"pt")).slice(0,8);
+  const cod = /^\d{4,}$/.test(t);
+  const hits = ART.filter(a=>!a.manual && (cod ? (a.id===t || a.bc===t || a.id.startsWith(t) || a.bc.startsWith(t)) : norm(a.artigo).includes(n))).sort((a,b)=>(b.temVendas-a.temVendas)||a.artigo.localeCompare(b.artigo,"pt")).slice(0,8);
   $("res").innerHTML = hits.map(a=>{
     const f0 = a.forns[0] ? a.forns[0][0] : "";
     const bel = a.forns.some(f=>f[0]==="Bel") && f0!=="Bel";
@@ -473,25 +474,43 @@ function mostraRes(){
      <select id="novoForn">${FORNS_LISTA.map(f=>`<option>${f}</option>`).join("")}</select></small></div>`;
 }
 $("procura").addEventListener("input", mostraRes);
+function adiciona(a, urg){
+  const p = pedAtual();
+  if (urg) p.urg[a.id] = true;
+  p.aj[a.id] = (p.aj[a.id]||0) + 1;
+  if (filtro!=="Todos" && filtro!==a.familia) filtro = a.familia;
+  fornSel = null; $("procura").value = ""; $("res").innerHTML = ""; gravaEst(); render();
+  toast("+1 " + (a.vol>1?"volume":"unid.") + ": " + a.artigo);
+  $("procura").focus();
+}
 $("res").onclick = e => {
   if (e.target.tagName==="SELECT" || e.target.tagName==="OPTION") return;
   const d = e.target.closest("div[data-id],div[data-novo]"); if (!d) return;
-  const p = pedAtual(); let a;
+  const p = pedAtual();
   if (d.dataset.novo) {
     const nome = $("procura").value.trim(), forn = $("novoForn").value;
     const id = "novo-" + Date.now();
     p.novos.push({id, artigo:nome, forn, vol:10});
-    a = {id, artigo:nome, familia:"Adicionados à mão", pvp:0, vol:10, forns:[[forn,null]], q:DIAS.map(()=>0), manual:true, lim:1e9, norm:0, temVendas:false, so:enc};
-    ART.push(a); p.aj[id] = 1;
-  } else {
-    a = ART.find(x=>x.id===d.dataset.id);
-    if (d.dataset.urg) p.urg[a.id] = true;
-    p.aj[a.id] = (p.aj[a.id]||0) + 1;
+    const a = {id, bc:"", artigo:nome, familia:"Adicionados à mão", pvp:0, vol:10, forns:[[forn,null]], q:DIAS.map(()=>0), manual:true, lim:1e9, norm:0, temVendas:false, so:enc};
+    ART.push(a); p.aj[id] = 0;
+    return adiciona(a, false);
   }
-  if (filtro!=="Todos" && filtro!==a.familia) filtro = a.familia;
-  fornSel = null; $("procura").value = ""; $("res").innerHTML = ""; gravaEst(); render();
-  toast("Adicionado: " + a.artigo);
+  adiciona(ART.find(x=>x.id===d.dataset.id), !!d.dataset.urg);
 };
+// leitor de código de barras (escreve o código e carrega Enter)
+$("procura").addEventListener("keydown", e => {
+  if (e.key !== "Enter") return;
+  e.preventDefault();
+  const t = $("procura").value.trim(); if (!t) return;
+  if (/^\d{4,}$/.test(t)) {
+    const a = ART.find(x=>!x.manual && (x.id===t || x.bc===t));
+    if (a) return adiciona(a, false);
+    toast("Código " + t + " não encontrado — escreve o nome ou adiciona como novo");
+    mostraRes(); return;
+  }
+  const hits = ART.filter(x=>!x.manual && norm(x.artigo).includes(norm(t)));
+  if (hits.length===1) adiciona(hits[0], false);
+});
 
 // ---------- PDF por fornecedor (todas as famílias desse fornecedor) ----------
 const EMPRESA = ["Melodias do Mar – Tabacaria, Unip. Lda", "C.C. E.Leclerc, Loja 4 - 3080-510 Figueira da Foz - NIF 507479122"];
