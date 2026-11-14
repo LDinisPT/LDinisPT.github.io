@@ -113,6 +113,17 @@ header{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;
 .urg{border:1px solid var(--line);background:var(--soft);color:var(--pink);border-radius:8px;font:600 12.5px var(--body);padding:6px 9px;margin-top:7px;cursor:pointer}
 .urg.on{background:var(--pink);color:#fff;border-color:var(--pink)}
 .zeros{text-align:center;cursor:pointer;color:var(--muted);font-size:13px}
+.zerosBtn{display:flex;gap:12px;align-items:center;text-align:left;width:100%;margin-top:6px;padding:13px 14px;border-radius:12px;cursor:pointer;
+  border:2px dashed var(--warn);background:color-mix(in srgb, var(--warn) 12%, var(--paper));color:var(--ink);font:14px var(--body)}
+.zerosBtn small{color:var(--muted);font-size:12.5px}
+.zerosBtn .zi{font-size:18px;color:var(--warn);width:24px;text-align:center}
+.zerosBtn.on{border-style:solid}
+.zhead{display:flex;justify-content:space-between;align-items:baseline;margin:10px 0 0;padding:8px 10px;border-radius:10px;
+  background:color-mix(in srgb, var(--warn) 18%, var(--paper));border-left:5px solid var(--warn)}
+.zhead h2{font-family:var(--display);font-size:17px;margin:0;color:var(--warn)}
+.zhead small{color:var(--muted);font-size:12.5px}
+.item.zero{border-style:dashed;border-left-style:solid;border-left-color:var(--warn);background:color-mix(in srgb, var(--warn) 6%, var(--paper))}
+.item.zero .vol b{color:var(--muted)}
 details.opc summary{cursor:pointer;font-weight:600;font-size:14px}
 details.opc .seg{margin-top:10px}
 details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
@@ -362,6 +373,31 @@ function alt(l){
 }
 function segOn(id,v){ document.querySelectorAll("#"+id+" button").forEach(b=>b.classList.toggle("on", b.dataset.v===v)); }
 
+function cartao(l, f, zero){
+      const mx = Math.max(...l.w,1);
+      const spark = [...l.w].reverse().map((x,i)=>`<i class="${i===3?'last':''}" style="height:${Math.max(2,x/mx*24)}px"></i>`).join("");
+      const tags = l.tags.map(t=>`<span class="tag t-${t[0]}">${t[1]}</span>`).join("");
+      const parou = l.tags.some(t=>t[0]==="stop"), temBel = l.forns.some(f=>f[0]==="Bel");
+      const ub = (temBel && l.forn!=="Bel" && parou) || l.urg
+        ? `<button class="urg ${l.urg?'on':''}" data-u="${esc(l.id)}">${l.urg?'⚡ Urgente à Bel — tirar':'Esgotado? ⚡ pedir à Bel'}</button>` : "";
+      const ex = l.ws[0].ex;
+      const det = (l.manual && !l.temVendas) ? "artigo novo — sem histórico de vendas"
+        : `vendeu <em>${l.ws[0].tot}</em>${ex?` <span style="color:var(--warn)">(${ex} em pico${est.picos==="ignorar"?', não conta':''})</span>`:''} · média <em>${l.media.toFixed(0)}</em>${l.resto?` · resto <em>${l.resto>0?'+':''}${l.resto}</em>`:''} · fica <em>${l.novoResto>0?'+':''}${l.novoResto}</em>`;
+      return `<div class="item ${zero?'zero':''}" style="--c:${cor(f)}">
+        <div class="row1">
+          <div style="min-width:0"><div class="nome">${esc(l.artigo)}${zero?'<span class="tag t-fora">a 0</span>':''}${tags}</div>
+            <div class="fam">${l.familia}${l.pvp?' · PVP '+eur(l.pvp):''}${l.custo?' · custo '+eur(l.custo,3)+' · margem '+l.mg.toFixed(1).replace(".",",")+'%':''}${l.vol?(valor(l)?' · ≈ '+eur0(valor(l)):' · sem preço'):''}</div>
+            ${alt(l)}</div>
+          <div class="stepper">
+            <button data-a="${esc(l.id)}" data-d="-1" aria-label="menos">−</button>
+            <div class="vol ${l.adj?'adj':''}"><b>${l.vol}</b><span>${l.adj?'sug. '+l.sug:(l.V>1?'vol de '+l.V:'unid.')}</span></div>
+            <button data-a="${esc(l.id)}" data-d="1" aria-label="mais">+</button>
+          </div>
+        </div>
+        <div class="row2">${l.temVendas?`<div class="spark" title="mesmo período nas últimas 4 semanas">${spark}</div>`:''}<div class="det">${det}</div></div>
+        ${ub}
+      </div>`;
+}
 function render(){
   const p = pedAtual();
   $("encomenda").innerHTML = ENCS.map(e=>`<button data-v="${e}" class="${e===enc?'on':''}">${dow(e)===0?'Domingo':'Quarta'} ${dm(e)}${CORTE && e<HOJE?' ✓':''}</button>`).join("");
@@ -394,7 +430,7 @@ function render(){
       <div class="fe">≈ ${eur0(s.eur)}${s.urg?' · '+s.urg+' urgente'+(s.urg>1?'s':''):''}</div></div>`; }
   $("forns").innerHTML = fh;
 
-  const vis = verZeros ? pedir.concat(zeros) : pedir;
+  const vis = pedir;
   const porF = {}; vis.forEach(l => (porF[l.forn] ||= []).push(l));
   const mostrar = fornSel ? [fornSel] : Object.keys(porF).sort((a,b)=>(stats[b]?.eur||0)-(stats[a]?.eur||0));
   let html = "";
@@ -403,33 +439,20 @@ function render(){
     const s = stats[f] || {vol:0,eur:0};
     html += `<div class="fhead" style="--c:${cor(f)}"><h2>${f}</h2><button class="btn pdf" data-pdf="${esc(f)}">📄 PDF</button><small>${s.vol} vol · ≈ ${eur0(s.eur)}</small></div>`;
     for (const l of itens){
-      const mx = Math.max(...l.w,1);
-      const spark = [...l.w].reverse().map((x,i)=>`<i class="${i===3?'last':''}" style="height:${Math.max(2,x/mx*24)}px"></i>`).join("");
-      const tags = l.tags.map(t=>`<span class="tag t-${t[0]}">${t[1]}</span>`).join("");
-      const parou = l.tags.some(t=>t[0]==="stop"), temBel = l.forns.some(f=>f[0]==="Bel");
-      const ub = (temBel && l.forn!=="Bel" && parou) || l.urg
-        ? `<button class="urg ${l.urg?'on':''}" data-u="${esc(l.id)}">${l.urg?'⚡ Urgente à Bel — tirar':'Esgotado? ⚡ pedir à Bel'}</button>` : "";
-      const ex = l.ws[0].ex;
-      const det = (l.manual && !l.temVendas) ? "artigo novo — sem histórico de vendas"
-        : `vendeu <em>${l.ws[0].tot}</em>${ex?` <span style="color:var(--warn)">(${ex} em pico${est.picos==="ignorar"?', não conta':''})</span>`:''} · média <em>${l.media.toFixed(0)}</em>${l.resto?` · resto <em>${l.resto>0?'+':''}${l.resto}</em>`:''} · fica <em>${l.novoResto>0?'+':''}${l.novoResto}</em>`;
-      html += `<div class="item" style="--c:${cor(f)}">
-        <div class="row1">
-          <div style="min-width:0"><div class="nome">${esc(l.artigo)}${tags}</div>
-            <div class="fam">${l.familia}${l.pvp?' · PVP '+eur(l.pvp):''}${l.custo?' · custo '+eur(l.custo,3)+' · margem '+l.mg.toFixed(1).replace(".",",")+'%':''}${l.vol?(valor(l)?' · ≈ '+eur0(valor(l)):' · sem preço'):''}</div>
-            ${alt(l)}</div>
-          <div class="stepper">
-            <button data-a="${esc(l.id)}" data-d="-1" aria-label="menos">−</button>
-            <div class="vol ${l.adj?'adj':''}"><b>${l.vol}</b><span>${l.adj?'sug. '+l.sug:(l.V>1?'vol de '+l.V:'unid.')}</span></div>
-            <button data-a="${esc(l.id)}" data-d="1" aria-label="mais">+</button>
-          </div>
-        </div>
-        <div class="row2">${l.temVendas?`<div class="spark" title="mesmo período nas últimas 4 semanas">${spark}</div>`:''}<div class="det">${det}</div></div>
-        ${ub}
-      </div>`;
+      html += cartao(l, f, false);
     }
   }
   const zv = fornSel ? zeros.filter(l=>l.forn===fornSel) : zeros;
-  if (zv.length) html += `<div class="card zeros" id="zeros">${verZeros?'Esconder':'Mostrar'} os <b>${zv.length}</b> artigos que ficam a 0<br><small>venderam menos de meio volume — passa para a encomenda seguinte</small></div>`;
+  if (zv.length) {
+    html += `<button class="zerosBtn ${verZeros?'on':''}" id="zeros">
+      <span class="zi">${verZeros?'▲':'▼'}</span>
+      <span><b>${verZeros?'Esconder':'Mostrar'} os ${zv.length} artigos a 0</b><br>
+      <small>venderam menos de meio volume — o que venderam passa para a encomenda seguinte</small></span></button>`;
+    if (verZeros) {
+      html += `<div class="zhead"><h2>A 0 nesta encomenda</h2><small>${zv.length} artigos · usa o + para pedir</small></div>`;
+      for (const l of ordena(zv.slice())) html += cartao(l, l.forn, true);
+    }
+  }
   if (!html) html = `<div class="card zeros">Nada a pedir nesta família.</div>`;
   $("lista").innerHTML = html;
 
