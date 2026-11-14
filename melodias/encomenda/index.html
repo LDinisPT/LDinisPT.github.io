@@ -127,7 +127,7 @@ details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
 .err{color:var(--bad);font-size:13px}
 #setup p{color:var(--muted);font-size:14px;margin:0 0 10px}
 #setup input{width:100%;padding:11px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:15px var(--body);margin-bottom:8px}
-.feita{display:flex;flex-direction:column;gap:6px;align-items:center;text-align:center}
+.feita{display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center}
 .feita p{font-size:12.5px;color:var(--muted);margin:0}
 .beta{font-size:11px;font-weight:700;color:var(--accent-ink);background:var(--accent);border-radius:6px;padding:1px 6px;vertical-align:4px;margin-left:4px}
 </style>
@@ -195,6 +195,7 @@ details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
 
   <div class="card feita">
     <button class="btn primary" id="feita">✓ Encomenda feita</button>
+    <button class="btn" id="anular" style="display:none">↩ Anular "encomenda feita"</button>
     <p id="feitaMsg">Carrega depois de fazer a encomenda: guarda o que fica por pedir (o "resto") para a próxima e limpa os ajustes.</p>
   </div>
 
@@ -439,8 +440,11 @@ function render(){
   $("bTot").textContent = sv + " vol · ≈ " + eur0(se);
   $("bForn").textContent = fornSel || "todos os fornecedores";
   $("copiar").textContent = fornSel ? "📄 PDF " + fornSel : "📄 PDF por fornecedor";
+  const feita = !!(est.feita && est.feita[enc]);
+  $("feita").textContent = feita ? "✓ Feita — voltar a marcar" : "✓ Encomenda feita";
+  $("anular").style.display = feita ? "" : "none";
   $("feitaMsg").textContent = est.feita && est.feita[enc]
-    ? "Marcada como feita às " + est.feita[enc] + ". Podes voltar a carregar se mudares alguma coisa."
+    ? "Marcada como feita às " + est.feita[enc] + ". Se foi engano, carrega em Anular. Se mudares alguma coisa, volta a marcar."
     : "Carrega depois de fazer a encomenda: guarda o que fica por pedir (o \"resto\") para a próxima.";
   window._lista = {ordemF: fornSel ? [fornSel] : ordemF, pedir, stats, todas: linhas};
 }
@@ -632,7 +636,19 @@ $("copiar").onclick = () => {
   const sem = todas.filter(l=>l.forn.startsWith("Sem")).length;
   pdfs(fs).then(()=>{ if (sem) toast(sem + " artigo(s) sem fornecedor ficaram de fora — usa o PDF dessa secção"); });
 };
+let confirmaFeita = 0;
 $("feita").onclick = () => {
+  // pede um segundo toque para evitar enganos
+  if (Date.now() - confirmaFeita > 4000) {
+    confirmaFeita = Date.now();
+    $("feita").textContent = "Toca outra vez para confirmar";
+    setTimeout(()=>{ if (Date.now() - confirmaFeita >= 4000) render(); }, 4100);
+    return;
+  }
+  confirmaFeita = 0;
+  // guarda o estado anterior para poder anular
+  est.antes = est.antes || {};
+  if (!(est.feita && est.feita[enc] && est.antes[enc])) est.antes[enc] = {resto: est.resto, restoDe: est.restoDe};
   // guarda o resto de TODAS as famílias para a próxima encomenda
   const linhas = ART.filter(a=>!a.so || a.so===enc).map(calcula);
   const r = {};
@@ -640,6 +656,12 @@ $("feita").onclick = () => {
   est.resto = r; est.restoDe = enc;
   est.feita = est.feita || {}; est.feita[enc] = new Date().toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"});
   gravaEst(); render(); toast("Encomenda marcada como feita ✓");
+};
+$("anular").onclick = () => {
+  const a = est.antes && est.antes[enc];
+  if (a) { est.resto = a.resto || {}; est.restoDe = a.restoDe || null; delete est.antes[enc]; }
+  if (est.feita) delete est.feita[enc];
+  gravaEst(); render(); toast("Anulado — a encomenda voltou a ficar por fazer");
 };
 $("limpar").onclick = () => { est.ped = {}; est.resto = {}; est.restoDe = null; est.feita = {}; gravaEst(); load(); toast("Ajustes apagados"); };
 $("reset").onclick = () => { delTok(); showSetup(); };
