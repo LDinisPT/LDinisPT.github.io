@@ -422,7 +422,7 @@ function cartao(l, f, zero){
         ? `<button class="urg ${l.urg?'on':''}" data-u="${esc(l.id)}">${l.urg?'⚡ Urgente à Bel — tirar':'Esgotado? ⚡ pedir à Bel'}</button>` : "";
       const ex = l.ws[0].ex;
       const det = (l.manual && !l.temVendas) ? "artigo novo — sem histórico de vendas"
-        : `vendeu <em>${l.ws[0].tot}</em>${ex?` <span style="color:var(--warn)">(${ex} em pico${est.picos==="ignorar"?', não conta':''})</span>`:''} · média <em>${l.media.toFixed(0)}</em>${l.resto?` · resto <em>${l.resto>0?'+':''}${l.resto}</em>`:''} · fica <em>${l.novoResto>0?'+':''}${l.novoResto}</em>`;
+        : `<span style="color:var(--ink)">${l.V>1||FAM_TAB.has(l.familia)?'Maços':'Unidades'}:</span> vendeu <em>${l.ws[0].tot}</em>${ex?` <span style="color:var(--warn)">(${ex} em pico${est.picos==="ignorar"?', não conta':''})</span>`:''} · média <em>${l.media.toFixed(0)}</em>${l.resto?` · resto <em>${l.resto>0?'+':''}${l.resto}</em>`:''} · fica <em>${l.novoResto>0?'+':''}${l.novoResto}</em>`;
       return `<div class="item ${zero?'zero':''}" style="--c:${cor(f)}">
         <div class="row1">
           <div style="min-width:0"><div class="nome">${esc(l.artigo)}${zero?'<span class="tag t-fora">a 0</span>':''}${tags}</div>
