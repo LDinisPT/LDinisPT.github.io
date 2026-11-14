@@ -218,8 +218,8 @@ details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
     <button class="btn" id="anular" style="display:none">↩ Anular "encomenda feita"</button>
     <button class="btn" id="recomecar">↺ Recomeçar esta encomenda</button>
     <div class="conf" id="confRec" style="display:none">
-      <b>Recomeçar a encomenda?</b>
-      <p>Apaga os ajustes + / −, os urgentes, os fornecedores escolhidos e os artigos adicionados à mão <b>desta encomenda</b>. Fica só a sugestão calculada pelas vendas. Não se pode desfazer.</p>
+      <b id="recTit">Recomeçar a encomenda?</b>
+      <p id="recTxt"></p>
       <div><button class="btn" id="recNao">Não</button> <button class="btn danger" id="recSim">Sim, recomeçar</button></div>
     </div>
     <p id="feitaMsg">Carrega depois de fazer a encomenda: guarda o que fica por pedir (o "resto") para a próxima e limpa os ajustes.</p>
@@ -507,6 +507,7 @@ function render(){
   $("bTot").textContent = sv + " vol · ≈ " + eur0(se);
   $("bForn").textContent = fornSel || "todos os fornecedores";
   $("copiar").textContent = fornSel ? "📄 PDF " + fornSel : "📄 PDF por fornecedor";
+  $("recomecar").textContent = fornSel ? "↺ Recomeçar só " + fornSel : "↺ Recomeçar a encomenda toda";
   const feita = !!(est.feita && est.feita[enc]);
   $("feita").textContent = feita ? "✓ Feita — voltar a marcar" : "✓ Encomenda feita";
   $("anular").style.display = feita ? "" : "none";
@@ -733,15 +734,34 @@ $("anular").onclick = () => {
   if (est.feita) delete est.feita[enc];
   gravaEst(); render(); toast("Anulado — a encomenda voltou a ficar por fazer");
 };
-$("recomecar").onclick = () => { $("confRec").style.display = ""; $("confRec").scrollIntoView({behavior:"smooth", block:"center"}); };
+$("recomecar").onclick = () => {
+  const f = fornSel;
+  $("recTit").textContent = f ? "Recomeçar só a encomenda de " + f + "?" : "Recomeçar a encomenda toda?";
+  $("recTxt").innerHTML = f
+    ? `Apaga os ajustes + / −, os urgentes, as escolhas de fornecedor e os artigos adicionados à mão <b>só dos artigos de ${esc(f)}</b>. Os outros fornecedores ficam como estão. Não se pode desfazer.`
+    : `Apaga os ajustes + / −, os urgentes, os fornecedores escolhidos e os artigos adicionados à mão de <b>todos os fornecedores</b> desta encomenda. Fica só a sugestão calculada pelas vendas. Não se pode desfazer.`;
+  $("recSim").textContent = f ? "Sim, recomeçar " + f : "Sim, recomeçar tudo";
+  $("confRec").style.display = ""; $("confRec").scrollIntoView({behavior:"smooth", block:"center"});
+};
 $("recNao").onclick = () => { $("confRec").style.display = "none"; };
 $("recSim").onclick = () => {
-  const p = pedAtual();
-  const novos = new Set((p.novos||[]).map(n=>n.id));
-  ART = ART.filter(a=>!novos.has(a.id));
-  est.ped[enc] = {aj:{}, urg:{}, novos:[], forn:{}};
-  $("confRec").style.display = "none"; fornSel = null; verZeros = false; filtro = "Tabaco Novidade";
-  gravaEst(); render(); toast("Encomenda recomeçada — só a sugestão das vendas");
+  const p = pedAtual(), f = fornSel;
+  if (!f) {
+    const novos = new Set((p.novos||[]).map(n=>n.id));
+    ART = ART.filter(a=>!novos.has(a.id));
+    est.ped[enc] = {aj:{}, urg:{}, novos:[], forn:{}};
+    filtro = "Tabaco Novidade";
+  } else {
+    // artigos que neste momento vão (no todo ou em parte) para este fornecedor
+    const ids = new Set(ART.filter(a=>!a.so || a.so===enc).map(calcula).flatMap(l => l.vol>0 ? divide(l) : [l]).filter(l=>l.forn===f).map(l=>l.id));
+    for (const id of ids) { delete p.aj[id]; delete p.urg[id]; delete p.forn[id]; }
+    for (const [id,x] of Object.entries(p.forn)) if (x===f) delete p.forn[id];
+    const fora = new Set((p.novos||[]).filter(n=>n.forn===f).map(n=>n.id));
+    p.novos = (p.novos||[]).filter(n=>!fora.has(n.id));
+    ART = ART.filter(a=>!fora.has(a.id));
+  }
+  $("confRec").style.display = "none"; verZeros = false;
+  gravaEst(); render(); toast(f ? "Encomenda de " + f + " recomeçada" : "Encomenda recomeçada — só a sugestão das vendas");
 };
 $("limpar").onclick = () => { $("confLimpar").style.display = ""; };
 $("limNao").onclick = () => { $("confLimpar").style.display = "none"; };
