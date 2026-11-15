@@ -136,7 +136,7 @@ footer{display:flex;justify-content:center;margin-top:4px}
 .tabs3 button.on{background:var(--accent);color:#fff}
 #app{flex-direction:column;gap:12px}
 .tp{display:flex;flex-direction:column;gap:12px}
-.tp[hidden]{display:none!important}
+.tp[hidden],#app section[hidden]{display:none!important}
 .ln{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:14px}
 .ln:first-of-type{border-top:0}
 .ln b{font-family:var(--mono);white-space:nowrap;font-variant-numeric:tabular-nums}
@@ -181,9 +181,22 @@ footer{display:flex;justify-content:center;margin-top:4px}
     <div class="goal"><div class="k"><span>Objetivo do dia · <span id="gObj"></span></span><span id="gPct"></span></div><div class="gbar"><span id="gBar" style="width:0"></span></div><div class="s" id="gTxt"></div></div>
   </section>
 
+  <section class="card" id="nResumo" hidden style="border:1.5px solid var(--accent)">
+    <h2 id="nRt">Resumo do dia</h2>
+    <div class="kpis" style="grid-template-columns:1fr 1fr 1fr">
+      <div class="kpi"><div class="k">Total</div><div class="v" id="nT"></div><div class="d" id="nTd"></div></div>
+      <div class="kpi"><div class="k">Vs ontem</div><div class="v" id="nO"></div><div class="d" id="nOd"></div></div>
+      <div class="kpi"><div class="k" id="nSk">Vs sem. passada</div><div class="v" id="nS"></div><div class="d" id="nSd"></div></div>
+    </div>
+    <div id="nRl" style="margin-top:10px"></div>
+  </section>
+  <section class="card" id="nAmanha" hidden>
+    <h2 id="nAt">Amanhã</h2>
+    <div id="nAl"></div>
+  </section>
   <div class="tabs3" id="tabs3"><button class="on" data-t="h">Hoje</button><button data-t="m">Mês</button><button data-t="f">Fechos</button><button data-t="s">Stock</button></div>
 <div class="tp" data-t="h">
-  <section class="card">
+  <section id="cmpCard" class="card">
     <div class="kpis">
       <div class="kpi"><div class="k">Ontem</div><div class="v" id="c1"></div><div class="d" id="d1"></div></div>
       <div class="kpi"><div class="k">Há 7 dias</div><div class="v" id="c2"></div><div class="d" id="d2"></div></div>
@@ -341,9 +354,19 @@ function conta(alvo) {
   const m = Math.floor(s / 60), ss = s % 60;
   return m + ":" + String(ss).padStart(2, "0");
 }
+const HORA_ABRE = 8, HORA_FECHA = 21;
+function eNoite() { const h = new Date().getHours(); return h >= HORA_FECHA || h < HORA_ABRE; }
 function tickStatus() {
   const upd = window._upd;
   if (!upd) return;
+  if (eNoite()) {
+    const hh = upd.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
+    $("upd").textContent = "🌙 Loja fechada";
+    $("refresh").classList.remove("stale");
+    $("status").innerHTML = `Abre às ${HORA_ABRE}h · últimos dados das ${hh}`;
+    $("status").classList.remove("stale");
+    return;
+  }
   const hora = t => t.toLocaleTimeString("pt-PT", { hour: "2-digit", minute: "2-digit" });
   const min = Math.max(0, Math.round((Date.now() - upd.getTime()) / 60000));
   $("upd").textContent = hora(upd) + (min <= 1 ? " · agora" : " · há " + min + " min");
@@ -428,7 +451,7 @@ function render(d) {
     ? `margem ${pc(mg.pct)}` : "";
   renderHero(d);
   renderTabaco(d.tabaco);
-  setTimeout(renderFechos, 0);
+  setTimeout(() => { renderFechos(); renderNoite(); }, 0);
 
   window._upd = d.atualizado ? new Date(d.atualizado.replace(" ", "T")) : null;
   window._talTs = d.taloes_atualizado ? new Date(d.taloes_atualizado.replace(" ", "T")) : null;
@@ -659,7 +682,7 @@ async function loadFechos() {
     const r = await fetch(`https://api.github.com/repos/${REPO}/contents/fechos.json?t=${Date.now()}`, { headers: { Authorization: `Bearer ${tok}`, Accept: "application/vnd.github.raw+json" }, cache: "no-store" });
     if (!r.ok) return;
     window._fechos = await r.json();
-    renderFechos();
+    renderFechos(); renderNoite();
   } catch (e) {}
 }
 function renderFechos() {
@@ -710,6 +733,59 @@ function renderFechos() {
     return `<li style="grid-template-columns:1fr auto"><span class="a">${dataPt(f.d)} <small>· ${eur0.format(f.diaria)}${dif}</small></span><span class="t ${clsV(c.res)}">${sinal(c.res)}</span></li>`;
   }).join("");
   $("fNota").textContent = "Cópia dos fechos atualizada a " + String(F.atualizado || "").slice(0, 16).replace("T", " ") + ".";
+}
+
+// ---- Modo noite (21h-8h): resumo do dia e amanha ----
+const DSEM = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
+function resFecho(f, mg) {
+  const dm = new Date(f.d.slice(0, 4), f.d.slice(5, 7), 0).getDate();
+  return f.diaria * mg / 100 + f.raspValor * TX_RASP + f.vendasSC * TX_JOGOS + SERV_MES / dm - CUSTOS_MES / dm;
+}
+function renderNoite() {
+  const d = window._ult, noite = eNoite();
+  $("nResumo").hidden = !noite || !d; $("nAmanha").hidden = !noite || !d;
+  $("cmpCard").hidden = noite;
+  if (!noite || !d) return;
+  const h = d.hoje || {}, c = d.comparacao || {}, dia = h.data || "", tot = h.total || 0;
+  const [y, m, dd] = dia.split("-").map(Number), dt = new Date(y, m - 1, dd);
+  const F = arr((window._fechos || {}).fechos);
+  const fx = F.find(f => f.d === dia);
+  $("nRt").textContent = `Resumo do dia · ${DSEM[dt.getDay()]}, ${String(dd).padStart(2, "0")}/${String(m).padStart(2, "0")}`;
+  $("nT").textContent = eur0.format(tot);
+  const mesV = {}; F.filter(f => f.d.slice(0, 7) === dia.slice(0, 7)).forEach(f => mesV[f.d] = f.diaria); mesV[dia] = tot;
+  const vals = Object.values(mesV).sort((a, b) => b - a);
+  $("nTd").textContent = `${vals.indexOf(tot) + 1}.º de ${vals.length} no mês`;
+  const dl = (id, cur, ref) => { const x = delta(cur, ref); $(id).textContent = x.txt || "—"; $(id).className = "v " + x.cls; $(id + "d").textContent = ref ? eur0.format(ref) : ""; };
+  dl("nO", tot, c.ontem); $("nSk").textContent = "Vs " + DSEM[dt.getDay()].slice(0, 3) + ". passado"; dl("nS", tot, c.semana_passada);
+  const ln = (n, sub, v, cl) => `<div class="ln"><span>${n}${sub ? `<small>${sub}</small>` : ""}</span><b class="${cl || ""}">${v}</b></div>`;
+  const mg = (d.margem && d.margem.pct) || 10;
+  let html = "";
+  if (fx) {
+    const r = resFecho(fx, mg);
+    html += ln("Resultado estimado", `margem ${pc(mg)} + jogos + serviços − custos`, sinal(r), clsV(r));
+    const dif = Math.round((fx.diaria - tot) * 100) / 100;
+    html += ln("Fecho vs Sage", `Diária ${eur.format(fx.diaria)} · Sage ${eur.format(tot)}`, Math.abs(dif) < 0.5 ? "bate certo ✓" : `diferença ${dif > 0 ? "+" : "−"}${eur.format(Math.abs(dif))}`, Math.abs(dif) < 0.5 ? "pos" : "neg");
+    html += ln("Jogos: sobras/faltas", "Fechou: " + (fx.resp || "—"), fx.difJogos === undefined ? "por contar" : (fx.difJogos >= 0 ? "+" : "−") + eur.format(Math.abs(fx.difJogos)), fx.difJogos === undefined || Math.abs(fx.difJogos) < 5 ? "" : clsV(fx.difJogos));
+    html += ln("Depositado hoje", "", eur0.format(fx.dep || 0));
+  } else {
+    html += ln("Fecho de caixa", "a cópia dos fechos corre às 21h41 e 9h41", "ainda não chegou", "");
+  }
+  const hs = arr(d.horas).filter(x => x.total > 0).sort((a, b) => b.total - a.total)[0];
+  if (hs) html += ln("Melhor hora", `${hs.vendas} vendas`, `${hs.hora}h · ${eur0.format(hs.total)}`);
+  const ta = arr(d.top_artigos)[0];
+  if (ta) html += ln("Artigo mais vendido", `${ta.qtd} un.`, esc(ta.artigo));
+  $("nRl").innerHTML = html;
+  // amanha
+  const am = new Date(dt); am.setDate(am.getDate() + 1);
+  const hj = new Date(); const ehHoje = am.getFullYear() === hj.getFullYear() && am.getMonth() === hj.getMonth() && am.getDate() === hj.getDate();
+  $("nAt").textContent = `${ehHoje ? "Hoje" : "Amanhã"} · ${DSEM[am.getDay()]}, ${String(am.getDate()).padStart(2, "0")}/${String(am.getMonth() + 1).padStart(2, "0")}`;
+  const mesmos = F.filter(f => { const [a, b, cc] = f.d.split("-").map(Number); return new Date(a, b - 1, cc).getDay() === am.getDay(); }).slice(-4);
+  let ah = "";
+  if (mesmos.length) ah += ln("Costuma vender", `média das últimas ${mesmos.length} ${DSEM[am.getDay()]}s`, "~" + eur0.format(mesmos.reduce((a, f) => a + f.diaria, 0) / mesmos.length));
+  const ds = (am.getDay() + 6) % 7;
+  const top = arr(d.heatmap).filter(x => x.d === ds && x.total > 0).sort((a, b) => b.total - a.total).slice(0, 3).map(x => x.h + "h");
+  if (top.length) ah += ln("Horas mais fortes", "pelo mapa das últimas 8 semanas", top.join(" · "));
+  $("nAl").innerHTML = ah || '<div class="note">Sem dados suficientes.</div>';
 }
 function abreTab(t) {
   document.querySelectorAll("#tabs3 button").forEach(b => b.classList.toggle("on", b.dataset.t === t));
