@@ -240,8 +240,8 @@ details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
 
   <details class="card opc">
     <summary>⚙️ Opções</summary>
-    <div class="seg" id="base"><button data-v="media" class="on">Média 4 semanas</button><button data-v="periodo">Desde a última encomenda</button></div>
-    <p><b>Média 4 semanas</b>: olha para o habitual (recomendado). <b>Desde a última encomenda</b>: repõe exatamente o que se vendeu desde a encomenda anterior (domingo: de quarta às 19h a domingo às 19h; quarta: de domingo às 19h a quarta às 19h).</p>
+    <div class="seg" id="base"><button data-v="periodo" class="on">Desde a última encomenda</button><button data-v="media">Média 4 semanas</button></div>
+    <p><b>Média 4 semanas</b>: olha para o habitual. <b>Desde a última encomenda</b>: repõe exatamente o que se vendeu desde a encomenda anterior (domingo: de quarta às 19h a domingo às 19h; quarta: de domingo às 19h a quarta às 19h).</p>
     <div class="seg" id="picos"><button data-v="ignorar" class="on">Ignorar picos</button><button data-v="incluir">Incluir picos</button></div>
     <p><b>Picos</b>: dias em que uma marca vendeu pelo menos 20 maços e mais do triplo do normal (alguém levou vários volumes). Por defeito o excesso não conta.</p>
     <p style="margin-top:12px"><a class="btn" href="../">← Painel de vendas</a> <button class="btn" id="reset">Trocar chave</button> <button class="btn" id="limpar">Apagar tudo o que está guardado</button></p>
@@ -348,7 +348,9 @@ $("theme").onclick = () => {
 let DADOS = null, ART = [], DIAS = [], IX = {}, HOJE = "", ENCS = [], CORTE = 0, NOMEF = {};
 let enc = null, filtro = "Tabaco Novidade", fornSel = null, verZeros = false, soMexidos = false;
 let est = lerEst();
-est.ordem = est.ordem || "alfa"; est.base = est.base || "media"; est.picos = est.picos || "ignorar";
+est.ordem = est.ordem || "alfa"; est.base = est.base || "periodo"; est.picos = est.picos || "ignorar";
+// a Ana pediu (15/11): por defeito "Desde a última encomenda" — aplica uma vez a quem já tinha a página aberta
+if (est.baseV !== 2) { est.base = "periodo"; est.baseV = 2; }
 est.resto = est.resto || {};      // {id: maços que transitam}
 est.ped = est.ped || {};          // por encomenda: {data: {aj:{}, urg:{}, novos:[]}}
 
