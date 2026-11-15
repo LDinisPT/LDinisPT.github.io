@@ -194,6 +194,13 @@ details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
 .fl2.on{background:color-mix(in srgb, var(--accent) 10%, transparent);border-radius:8px;padding-left:6px;padding-right:6px}
 .fl2.on .q b{color:var(--accent)}
 .item{cursor:default}
+.famInfo{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;border:2px solid var(--good);background:var(--paper);font-size:14px}
+.famInfo a{color:var(--good);font-weight:600;cursor:pointer;white-space:nowrap}
+.famT{font-weight:600;font-size:14px;margin:10px 0 2px}
+.frow{display:flex;justify-content:space-between;align-items:center;padding:9px 2px;border-top:1px solid var(--line);cursor:pointer;font-size:14px}
+.frow small{color:var(--muted);font-size:12px}
+.fbx{width:20px;height:20px;border-radius:5px;border:2px solid var(--good);display:inline-flex;align-items:center;justify-content:center;font-size:13px;color:#06191c;flex-shrink:0}
+.fbx.v{background:var(--good)}
 .beta{font-size:11px;font-weight:700;color:var(--accent-ink);background:var(--accent);border-radius:6px;padding:1px 6px;vertical-align:4px;margin-left:4px}
 </style>
 </head>
@@ -238,8 +245,11 @@ details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
     <div class="kpi"><div class="v" id="kEur">–</div><div class="k">valor ≈</div></div>
   </div>
 
-  <details class="card opc">
+  <div class="famInfo" id="famInfo"></div>
+  <details class="card opc" id="opcoes">
     <summary>⚙️ Opções</summary>
+    <div class="famT">Famílias que entram na encomenda</div>
+    <div id="famLista"></div>
     <div class="seg" id="base"><button data-v="periodo" class="on">Desde a última encomenda</button><button data-v="media">Média 4 semanas</button></div>
     <p><b>Média 4 semanas</b>: olha para o habitual. <b>Desde a última encomenda</b>: repõe exatamente o que se vendeu desde a encomenda anterior (domingo: de quarta às 19h a domingo às 19h; quarta: de domingo às 19h a quarta às 19h).</p>
     <div class="seg" id="picos"><button data-v="ignorar" class="on">Ignorar picos</button><button data-v="incluir">Incluir picos</button></div>
@@ -351,6 +361,10 @@ let est = lerEst();
 est.ordem = est.ordem || "alfa"; est.base = est.base || "periodo"; est.picos = est.picos || "ignorar";
 // a Ana pediu (15/11): por defeito "Desde a última encomenda" — aplica uma vez a quem já tinha a página aberta
 if (est.baseV !== 2) { est.base = "periodo"; est.baseV = 2; }
+// famílias que entram na encomenda (pedido 15/11: por defeito só Tabaco Novidade + Tabaco RYO)
+if (!Array.isArray(est.fams) || est.famV !== 1) { est.fams = ["Tabaco Novidade","Tabaco RYO"]; est.famV = 1; }
+const famOn = f => f === "Adicionados à mão" || est.fams.includes(f);
+const artsEnc = () => ART.filter(a => (!a.so || a.so===enc) && famOn(a.familia));
 est.resto = est.resto || {};      // {id: maços que transitam}
 est.ped = est.ped || {};          // por encomenda: {data: {aj:{}, urg:{}, novos:[]}}
 
@@ -552,6 +566,15 @@ function cartao(l, f, zero){
         ${ub}
       </div>`;
 }
+function famUI(){
+  const todas = [...new Set(ART.filter(a=>a.temVendas).map(a=>a.familia))];
+  const ORD = ["Tabaco Novidade","Tabaco RYO","Cigarrilhas","Charutos"];
+  todas.sort((a,b)=>{const x=ORD.indexOf(a), y=ORD.indexOf(b); return (x<0?99:x)-(y<0?99:y) || a.localeCompare(b,"pt");});
+  const on = todas.filter(famOn);
+  $("famInfo").innerHTML = `<span>A encomenda inclui: <b>${on.length ? on.join(", ") : "nenhuma família"}</b></span><a id="famAlt">alterar</a>`;
+  $("famLista").innerHTML = todas.map(f => { const c = famOn(f);
+    return `<div class="frow" data-fam="${esc(f)}"><span>${f}</span><span class="fbx ${c?'v':''}">${c?'✓':''}</span></div>`; }).join("");
+}
 function render(){
   const p = pedAtual();
   $("encomenda").innerHTML = ENCS.map(e=>`<button data-v="${e}" class="${e===enc?'on':''}">${dow(e)===0?'Domingo':'Quarta'} ${dm(e)}${CORTE && e<HOJE?' ✓':''}</button>`).join("");
@@ -565,7 +588,8 @@ function render(){
       ? `<div class="aviso">A <b>EuroNovidades</b> só recebe encomenda ao domingo — nesta encomenda de quarta não aparece. No domingo repõe a semana inteira.</div>`
       : `<div class="aviso">A <b>EuroNovidades</b> é só ao domingo: para ela, esta encomenda repõe a semana inteira (de domingo a domingo, às ${CORTE||19}h).</div>`);
 
-  const linhas = ART.filter(a=>!a.so || a.so===enc).map(calcula);
+  const linhas = artsEnc().map(calcula);
+  famUI();
   const fams = ["Todos", ...[...new Set(linhas.filter(l=>l.temVendas||l.manual||l.adj).map(l=>l.familia))].sort((a,b)=>a.localeCompare(b,"pt"))];
   if (!fams.includes(filtro)) filtro = "Todos";
   $("familias").innerHTML = fams.map(f=>`<span class="chip ${f===filtro?'on':''}" data-v="${esc(f)}">${f}</span>`).join("");
@@ -655,6 +679,14 @@ $("familias").onclick = e => { const c=e.target.closest(".chip"); if(!c) return;
 $("forns").onclick = e => { const c=e.target.closest(".fcard"); if(!c) return; fornSel=c.dataset.v||null; verZeros=false; render();
   try { $("lista").scrollIntoView({behavior:"smooth", block:"start"}); } catch(_){} };
 $("picosBox").onclick = e => { const r = e.target.closest(".pkl"); if (r) abreFornecedores(r.dataset.id.replace(/&amp;/g,"&")); };
+$("famInfo").onclick = e => { if (e.target.id==="famAlt") { const d=$("opcoes"); d.open = true; d.scrollIntoView({behavior:"smooth", block:"start"}); } };
+$("famLista").onclick = e => {
+  const r = e.target.closest(".frow"); if (!r) return;
+  const f = r.dataset.fam.replace(/&amp;/g,"&");
+  est.fams = est.fams.includes(f) ? est.fams.filter(x=>x!==f) : [...est.fams, f];
+  if (filtro !== "Todos" && !famOn(filtro)) filtro = "Todos";
+  fornSel = null; gravaEst(); render();
+};
 $("alterados").onclick = e => { if (e.target.closest("#verMex")) { soMexidos = !soMexidos; verZeros = false; render(); } };
 $("lista").onclick = e => {
   if (e.target.closest("#zeros")) { verZeros=!verZeros; render(); return; }
@@ -763,7 +795,7 @@ function mostraRes(){
   const t = $("procura").value.trim(); if (t.length<2){ $("res").innerHTML=""; return; }
   const n = norm(t);
   const cod = /^\d{4,}$/.test(t);
-  const hits = ART.filter(a=>!a.manual && (cod ? (a.id===t || a.bc===t || a.id.startsWith(t) || a.bc.startsWith(t)) : norm(a.artigo).includes(n))).sort((a,b)=>(b.temVendas-a.temVendas)||a.artigo.localeCompare(b.artigo,"pt")).slice(0,8);
+  const hits = ART.filter(a=>!a.manual && famOn(a.familia) && (cod ? (a.id===t || a.bc===t || a.id.startsWith(t) || a.bc.startsWith(t)) : norm(a.artigo).includes(n))).sort((a,b)=>(b.temVendas-a.temVendas)||a.artigo.localeCompare(b.artigo,"pt")).slice(0,8);
   $("res").innerHTML = hits.map(a=>{
     const l = calcula(a), best = a.forns[0];
     const ped = l.vol>0 ? `<span class="jp">já pede ${l.vol} vol</span>` : "";
@@ -791,18 +823,19 @@ $("procura").addEventListener("keydown", e => {
   const t = $("procura").value.trim(); if (!t) return;
   if (/^\d{4,}$/.test(t)) {
     const a = ART.find(x=>!x.manual && (x.id===t || x.bc===t));
+    if (a && !famOn(a.familia)) { toast(a.artigo + ": a família " + a.familia + " não entra na encomenda (Opções)"); return; }
     if (a) return abreFornecedores(a.id, {pesquisa:true});
     toast("Código " + t + " não encontrado — escreve o nome ou adiciona como novo");
     mostraRes(); return;
   }
-  const hits = ART.filter(x=>!x.manual && norm(x.artigo).includes(norm(t)));
+  const hits = ART.filter(x=>!x.manual && famOn(x.familia) && norm(x.artigo).includes(norm(t)));
   if (hits.length===1) abreFornecedores(hits[0].id, {pesquisa:true});
 });
 
 // ---------- PDF por fornecedor (todas as famílias desse fornecedor) ----------
 const EMPRESA = ["Melodias do Mar – Tabacaria, Unip. Lda", "C.C. E.Leclerc, Loja 4 - 3080-510 Figueira da Foz - NIF 507479122"];
 function linhasForn(f){
-  return ART.filter(a=>!a.so || a.so===enc).map(calcula).filter(l=>l.vol>0).flatMap(divide).filter(l=>l.forn===f)
+  return artsEnc().map(calcula).filter(l=>l.vol>0).flatMap(divide).filter(l=>l.forn===f)
     .sort((a,b)=>a.familia.localeCompare(b.familia,"pt") || a.artigo.localeCompare(b.artigo,"pt"));
 }
 function fazPDF(f){
@@ -886,7 +919,7 @@ function fazPDF(f){
 // revisão das alterações à mão antes de criar os PDFs
 let revPend = null;
 function pdfsComRevisao(lista){
-  const linhas = ART.filter(a=>!a.so || a.so===enc).map(calcula).filter(l=>l.adj!==0 && l.temVendas);
+  const linhas = artsEnc().map(calcula).filter(l=>l.adj!==0 && l.temVendas);
   const doLista = linhas.filter(l => (l.vol>0 ? divide(l) : [l]).some(x=>lista.includes(x.forn)) || (l.vol===0 && lista.includes(l.forn)));
   if (!doLista.length) return pdfs(lista);
   revPend = lista;
@@ -911,10 +944,10 @@ async function pdfs(lista){
 }
 $("copiar").onclick = () => {
   if (fornSel) return pdfsComRevisao([fornSel]);
-  const todas = ART.filter(a=>!a.so || a.so===enc).map(calcula).filter(l=>l.vol>0).flatMap(divide);
+  const todas = artsEnc().map(calcula).filter(l=>l.vol>0).flatMap(divide);
   const fs = [...new Set(todas.map(l=>l.forn))].filter(f=>!f.startsWith("Sem"));
   const sem = todas.filter(l=>l.forn.startsWith("Sem")).length;
-  if (ART.filter(a=>!a.so || a.so===enc).map(calcula).some(l=>l.adj!==0 && l.temVendas)) return pdfsComRevisao(fs);
+  if (artsEnc().map(calcula).some(l=>l.adj!==0 && l.temVendas)) return pdfsComRevisao(fs);
   pdfs(fs).then(()=>{ if (sem) toast(sem + " artigo(s) sem fornecedor ficaram de fora — usa o PDF dessa secção"); });
 };
 let confirmaFeita = 0;
@@ -931,8 +964,11 @@ $("feita").onclick = () => {
   est.antes = est.antes || {};
   if (!(est.feita && est.feita[enc] && est.antes[enc])) est.antes[enc] = {resto: est.resto, restoDe: est.restoDe};
   // guarda o resto de TODAS as famílias para a próxima encomenda
-  const linhas = ART.filter(a=>!a.so || a.so===enc).map(calcula);
+  const linhas = artsEnc().map(calcula);
+  const fora = ART.filter(a => !famOn(a.familia));   // famílias desligadas: o resto delas fica como estava
+
   const r = {};
+  for (const a of fora) if (est.resto && est.resto[a.id]) r[a.id] = est.resto[a.id];
   for (const l of linhas) {
     if (l.foraDia) { if (est.resto && est.resto[l.id]) r[l.id] = est.resto[l.id]; continue; }   // semanais: mantém o resto até domingo
     if (!l.manual && l.novoResto) r[l.id] = l.novoResto;
@@ -966,7 +1002,7 @@ $("recSim").onclick = () => {
     filtro = "Tabaco Novidade";
   } else {
     // artigos que neste momento vão (no todo ou em parte) para este fornecedor
-    const ids = new Set(ART.filter(a=>!a.so || a.so===enc).map(calcula).flatMap(l => l.vol>0 ? divide(l) : [l]).filter(l=>l.forn===f).map(l=>l.id));
+    const ids = new Set(artsEnc().map(calcula).flatMap(l => l.vol>0 ? divide(l) : [l]).filter(l=>l.forn===f).map(l=>l.id));
     for (const id of ids) { delete p.aj[id]; delete p.urg[id]; delete p.forn[id]; delete p.rep[id]; }
     for (const [id,x] of Object.entries(p.forn)) if (x===f) delete p.forn[id];
     const fora = new Set((p.novos||[]).filter(n=>n.forn===f).map(n=>n.id));
