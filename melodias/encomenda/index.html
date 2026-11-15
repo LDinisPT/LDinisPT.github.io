@@ -144,6 +144,18 @@ header{display:flex;flex-wrap:nowrap;align-items:flex-start;justify-content:spac
 .alterados{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;border-radius:12px;
   background:color-mix(in srgb, var(--warn) 16%, var(--paper));border:2px solid var(--warn);font-size:14px}
 .alterados .btn{padding:6px 10px}
+.item.pk{border:2px solid #D85A30;border-left-width:6px}
+.item.pk .vol b{color:#D85A30}
+.pkbox{border:2px solid #D85A30;border-radius:12px;overflow:hidden;background:var(--paper)}
+.pkh{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap;padding:10px 12px;background:#D85A30;color:#fff}
+.pkh b{font-size:15px}.pkh span{font-size:12.5px}
+.pkl{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;border-top:1px solid var(--line);cursor:pointer}
+.pkl:hover{background:var(--soft)}
+.pkl small{display:block;color:var(--muted);font-size:12px}
+.pkn{flex-shrink:0;text-align:right;font-family:var(--mono);font-size:14px}
+.pkn b{color:#D85A30;font-size:16px}.pkn small{color:#D85A30;font-weight:600}
+.pkf{padding:8px 12px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.pico{margin:-2px 0 8px;padding:6px 8px;border-radius:8px;background:#D85A30;color:#fff;font-size:13px}
 .item.zero{border-style:dashed;border-left-style:solid;border-left-color:var(--warn);background:color-mix(in srgb, var(--warn) 6%, var(--paper))}
 .item.zero .vol b{color:var(--muted)}
 details.opc summary{cursor:pointer;font-weight:600;font-size:14px}
@@ -245,6 +257,7 @@ details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
   <div class="lbl">Fornecedores — toca para abrir</div>
   <div class="fgrid" id="forns"></div>
 
+  <div id="picosBox"></div>
   <div class="lbl">Falta alguma coisa?</div>
   <div class="add">
     <input id="procura" type="search" placeholder="🔍 Procurar artigo ou passar o código de barras…" autocomplete="off">
@@ -409,9 +422,9 @@ function janela(o,k,dias){
 const ini = d => CORTE ? fmt(add(d,-1)) + " às " + CORTE + "h" : fmt(d);
 const fim = d => CORTE ? fmt(d) + " às " + CORTE + "h" : fmt(d);
 function soma(a,dias){
-  let tot=0, ex=0;
-  for (const d of dias){ const i=IX[d]; if (i===undefined) continue; const q=a.q[i]; tot+=q; if (q>=a.lim) ex+=q-a.norm; }
-  return {tot, ex, liq: tot-ex};
+  let tot=0, ex=0; const pk=[];
+  for (const d of dias){ const i=IX[d]; if (i===undefined) continue; const q=a.q[i]; tot+=q; if (q>=a.lim) { ex+=q-a.norm; pk.push([d, q-a.norm]); } }
+  return {tot, ex, liq: tot-ex, pk};
 }
 
 function calcula(a){
@@ -437,6 +450,16 @@ function calcula(a){
   const b = est.base==="periodo" ? w[0] : Math.round(media);
   const alvo = b + resto;
   const sug = Math.max(0, Math.round(alvo / V));
+  // com "incluir picos": quanto pedia sem os picos (para o destaque)
+  let sugSem = sug, picos = [];
+  if (est.picos === "incluir" && ws.some(x=>x.ex>0)) {
+    const wl = ws.map(x=>x.liq);
+    const ml = parcial ? (wl[1]*3+wl[2]*2+wl[3])/6 : (wl[0]*4+wl[1]*3+wl[2]*2+wl[3])/10;
+    const bl = est.base==="periodo" ? wl[0] : Math.round(ml);
+    sugSem = Math.max(0, Math.round((bl + resto) / V));
+    picos = ws.flatMap(x=>x.pk).sort((x,y)=>y[0].localeCompare(x[0]));
+    if (est.base==="periodo") picos = ws[0].pk;
+  }
   const adj = p.aj[a.id] || 0;
   const vol = foraDia ? 0 : Math.max(0, sug + adj);
   const novoResto = (a.manual || foraDia) ? 0 : alvo - vol*V;
@@ -452,7 +475,7 @@ function calcula(a){
   if (ws[0].ex>0) tags.push(["fora","pico +"+ws[0].ex]);
   if (sem !== undefined) tags.push(["new","semanal · só ao domingo"]);
   const repar = (p.rep && p.rep[a.id]) || null;
-  return {...a, repar, foraDia, semanal: sem !== undefined, w, ws, media, b, sug, vol, adj, novoResto, forn, custo, mg, tags, V, resto, urg, parcial, comeca, escolhido: !!esc_};
+  return {...a, repar, sugSem, picos, foraDia, semanal: sem !== undefined, w, ws, media, b, sug, vol, adj, novoResto, forn, custo, mg, tags, V, resto, urg, parcial, comeca, escolhido: !!esc_};
 }
 // preço igual (diferença < 0,1 cênt./maço) em vários fornecedores: divide os volumes entre eles
 function divide(l){
@@ -509,7 +532,10 @@ function cartao(l, f, zero){
       const mexido = l.adj !== 0 && l.temVendas;
       const faixa = mexido ? `<div class="mexido">✋ Alterado à mão: sugestão era <b>${l.sug}</b>, ficou <b>${l.sug + l.adj < 0 ? 0 : l.sug + l.adj}</b> (${l.adj>0?'+':''}${l.adj})
           <button class="btn desf" data-r="${esc(l.id)}">↺ Voltar à sugestão</button></div>` : "";
-      return `<div class="item ${zero?'zero':''} ${mexido?'mex':''}" data-id="${esc(l.id)}" style="--c:${cor(f)}" title="Duplo clique para escolher / repartir fornecedores">${faixa}
+      const comPico = est.picos==="incluir" && l.picos && l.picos.length && l.sug !== l.sugSem;
+      const pkTxt = comPico ? l.picos.slice(0,2).map(([d,q])=>`venda de ${q} maços numa venda (${fmt(d)})`).join("; ") + (l.picos.length>2?"; …":"") : "";
+      const faixaP = comPico ? `<div class="pico">Inclui pico: ${pkTxt.charAt(0).toUpperCase()+pkTxt.slice(1)}. Sem o pico pedia ${l.sugSem} vol, com o pico pede ${l.sug}.</div>` : "";
+      return `<div class="item ${zero?'zero':''} ${mexido?'mex':''} ${comPico?'pk':''}" data-id="${esc(l.id)}" style="--c:${cor(f)}" title="Duplo clique para escolher / repartir fornecedores">${faixaP}${faixa}
         <div class="row1">
           <div style="min-width:0"><div class="nome">${esc(l.artigo)}${zero?'<span class="tag t-fora">a 0</span>':''}${tags}</div>
             <div class="fam">${l.familia}${l.pvp?' · PVP '+eur(l.pvp):''}${l.custo?' · custo '+eur(l.custo,3)+' · margem '+l.mg.toFixed(1).replace(".",",")+'%':''}${l.vol?(valor(l)?' · ≈ '+eur0(valor(l)):' · sem preço'):''}</div>
@@ -559,6 +585,15 @@ function render(){
       <div class="fn">${f}${s.urg?' ⚡':''}</div><div class="fv">${s.vol} <small>vol · ${s.n} art.</small></div>
       <div class="fe">≈ ${eur0(s.eur)}${s.urg?' · '+s.urg+' urgente'+(s.urg>1?'s':''):''}</div></div>`; }
   $("forns").innerHTML = fh;
+  // quadro dos picos incluídos (só com "Incluir picos")
+  const comPk = est.picos==="incluir" ? daFam.filter(l=>l.picos && l.picos.length && l.sug!==l.sugSem).sort((a,b)=>a.artigo.localeCompare(b.artigo,"pt")) : [];
+  if (comPk.length) {
+    const extra = comPk.reduce((s2,l)=>s2 + (l.sug - l.sugSem), 0);
+    $("picosBox").innerHTML = `<div class="pkbox"><div class="pkh"><b>Picos incluídos nesta encomenda</b><span>${comPk.length} artigo${comPk.length>1?'s':''} · ${extra>0?'+':''}${extra} vol por causa dos picos</span></div>` +
+      comPk.map(l=>`<div class="pkl" data-id="${esc(l.id)}"><span><b>${esc(l.artigo)}</b><small>${esc(l.forn)} · ${l.picos.slice(0,2).map(([d,q])=>`venda de ${q} maços numa venda (${fmt(d)})`).join("; ")}</small></span>
+        <span class="pkn">${l.sugSem} → <b>${l.sug}</b> vol<small>${l.sug-l.sugSem>0?'+':''}${l.sug-l.sugSem}</small></span></div>`).join("") +
+      `<div class="pkf">Toca num artigo para escolher o fornecedor. Para não contar os picos, muda para "Ignorar picos" nas Opções.</div></div>`;
+  } else $("picosBox").innerHTML = "";
 
   const vis = soMexidos ? pedir.filter(l=>l.adj!==0 && l.temVendas) : pedir;
   const porF = {}; vis.forEach(l => (porF[l.forn] ||= []).push(l));
@@ -617,6 +652,7 @@ $("picos").onclick = e => { const b=e.target.closest("button"); if(!b) return; e
 $("familias").onclick = e => { const c=e.target.closest(".chip"); if(!c) return; filtro=c.dataset.v; fornSel=null; verZeros=false; render(); };
 $("forns").onclick = e => { const c=e.target.closest(".fcard"); if(!c) return; fornSel=c.dataset.v||null; verZeros=false; render();
   try { $("lista").scrollIntoView({behavior:"smooth", block:"start"}); } catch(_){} };
+$("picosBox").onclick = e => { const r = e.target.closest(".pkl"); if (r) abreFornecedores(r.dataset.id.replace(/&amp;/g,"&")); };
 $("alterados").onclick = e => { if (e.target.closest("#verMex")) { soMexidos = !soMexidos; verZeros = false; render(); } };
 $("lista").onclick = e => {
   if (e.target.closest("#zeros")) { verZeros=!verZeros; render(); return; }
