@@ -118,6 +118,30 @@ input{width:100%;padding:11px;border-radius:8px;border:1px solid var(--line);bac
 .btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .err{color:var(--bad);font-size:13px}
 footer{display:flex;justify-content:center;margin-top:4px}
+
+.hero3{background:var(--ink);color:var(--paper);border-radius:12px;overflow:hidden}
+.h3row{display:grid;grid-template-columns:1.35fr 1fr 1fr}
+.h3row>div{padding:15px 10px 13px;border-left:1px solid color-mix(in srgb,var(--paper) 18%,transparent);min-width:0}
+.h3row>div:first-child{border-left:0;padding-left:15px}
+.hero3 .k{font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;opacity:.75}
+.hero3 .v{font:600 16px var(--mono);margin-top:5px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.hero3 .v.b{font-size:clamp(18px,5.4vw,22px)}
+.hero3 .s{font-size:11px;opacity:.8;margin-top:3px;font-family:var(--mono)}
+.goal{border-top:1px solid color-mix(in srgb,var(--paper) 18%,transparent);padding:10px 15px 14px}
+.goal .k{display:flex;justify-content:space-between}
+.gbar{height:9px;background:color-mix(in srgb,var(--paper) 20%,transparent);border-radius:6px;overflow:hidden;margin:6px 0 4px}
+.gbar span{display:block;height:100%;background:var(--good);transition:width .4s}
+.tabs3{display:flex;gap:4px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:4px;position:sticky;top:0;z-index:4}
+.tabs3 button{flex:1;border:0;background:none;padding:9px 0;border-radius:9px;font:600 13.5px var(--body);color:var(--muted);cursor:pointer}
+.tabs3 button.on{background:var(--accent);color:#fff}
+#app{flex-direction:column;gap:12px}
+.tp{display:flex;flex-direction:column;gap:12px}
+.tp[hidden]{display:none!important}
+.ln{display:flex;justify-content:space-between;gap:10px;padding:7px 0;border-top:1px solid var(--line);font-size:14px}
+.ln:first-of-type{border-top:0}
+.ln b{font-family:var(--mono);white-space:nowrap;font-variant-numeric:tabular-nums}
+.ln small{display:block;color:var(--muted);font-size:11.5px}
+.split{display:flex;height:12px;border-radius:6px;overflow:hidden;margin:2px 0 8px;background:var(--soft)}
 </style>
 </head>
 <body>
@@ -148,13 +172,17 @@ footer{display:flex;justify-content:center;margin-top:4px}
 </section>
 
 <main id="app" style="display:none;display:none">
-  <section class="summary">
-    <div class="k">Vendas de hoje</div>
-    <div class="v" id="tot">—</div>
-    <div class="sub" id="nv"></div>
-    <div class="mg" id="mg"></div>
+  <section class="hero3">
+    <div class="h3row">
+      <div><div class="k">Hoje</div><div class="v b" id="tot">—</div><div class="s" id="nv"></div><div class="s" id="mg"></div></div>
+      <div><div class="k">Mês</div><div class="v" id="hMes">—</div><div class="s" id="hMesS"></div><div class="s" id="hMesM"></div></div>
+      <div><div class="k">Ano</div><div class="v" id="hAno">—</div><div class="s">desde 1 jan</div><div class="s" id="hAnoM"></div></div>
+    </div>
+    <div class="goal"><div class="k"><span>Objetivo do dia · <span id="gObj"></span></span><span id="gPct"></span></div><div class="gbar"><span id="gBar" style="width:0"></span></div><div class="s" id="gTxt"></div></div>
   </section>
 
+  <div class="tabs3" id="tabs3"><button class="on" data-t="h">Hoje</button><button data-t="m">Mês</button><button data-t="f">Fechos</button><button data-t="s">Stock</button></div>
+<div class="tp" data-t="h">
   <section class="card">
     <div class="kpis">
       <div class="kpi"><div class="k">Ontem</div><div class="v" id="c1"></div><div class="d" id="d1"></div></div>
@@ -164,32 +192,16 @@ footer{display:flex;justify-content:center;margin-top:4px}
     <div class="note" id="compNote"></div>
   </section>
 
-  <section class="card" id="mesCard" style="display:none">
-    <h2>Mês em curso</h2>
-    <div class="mesTot" id="mesTot"></div>
-    <div class="mesSub" id="mesSub"></div>
-    <div class="kpis">
-      <div class="kpi"><div class="k">Mês passado</div><div class="v" id="m1"></div><div class="d" id="md1"></div></div>
-      <div class="kpi"><div class="k">Ano passado</div><div class="v" id="m2"></div><div class="d" id="md2"></div></div>
-      <div class="kpi"><div class="k">Previsão fecho</div><div class="v" id="m3"></div></div>
-    </div>
-    <div class="note" id="mesNote"></div>
-  </section>
-
-  <section class="card">
-    <h2>Últimos 14 dias</h2>
-    <div id="chDias"></div>
-  </section>
-
   <section class="card">
     <h2>Vendas por hora (hoje)</h2>
     <div id="chHoras"></div>
   </section>
 
-  <section class="card" id="heatCard" style="display:none">
-    <h2>Horas fortes e fracas</h2>
-    <div id="heat"></div>
-    <div class="note">Média por hora e dia da semana (últimas 8 semanas). Vermelho = horas mortas, verde = horas de mais vendas.</div>
+  <section class="card" id="tabCard" style="display:none">
+    <h2>Tabaco vs resto (hoje)</h2>
+    <div class="split" id="tabSplit"></div>
+    <div id="tabLn"></div>
+    <div class="note" id="tabNote"></div>
   </section>
 
   <section class="card" id="famCard" style="display:none">
@@ -219,6 +231,37 @@ footer{display:flex;justify-content:center;margin-top:4px}
     <div class="note" id="bMsg"></div>
     <ul class="lst" id="bLst"></ul>
   </section>
+</div>
+<div class="tp" data-t="m" hidden>
+  <section class="card" id="mesCard" style="display:none">
+    <h2>Comparação do mês</h2>
+    <div class="mesTot" id="mesTot" hidden></div>
+    <div class="mesSub" id="mesSub"></div>
+    <div class="kpis">
+      <div class="kpi"><div class="k">Mês passado</div><div class="v" id="m1"></div><div class="d" id="md1"></div></div>
+      <div class="kpi"><div class="k">Ano passado</div><div class="v" id="m2"></div><div class="d" id="md2"></div></div>
+      <div class="kpi"><div class="k">Previsão fecho</div><div class="v" id="m3"></div></div>
+    </div>
+    <div class="note" id="mesNote"></div>
+  </section>
+
+  <section class="card">
+    <h2>Últimos 14 dias</h2>
+    <div id="chDias"></div>
+  </section>
+
+  <section class="card" id="heatCard" style="display:none">
+    <h2>Horas fortes e fracas</h2>
+    <div id="heat"></div>
+    <div class="note">Média por hora e dia da semana (últimas 8 semanas). Vermelho = horas mortas, verde = horas de mais vendas.</div>
+  </section>
+</div>
+<div class="tp" data-t="f" hidden>
+  <section class="card"><h2>Fechos</h2><div class="note">Em preparação: jogos de ontem, Payshop, sobras/faltas e resultado estimado.</div></section>
+</div>
+<div class="tp" data-t="s" hidden>
+  <section class="card"><h2>Stock</h2><div class="note">Em preparação: stock a acabar e artigos parados.</div></section>
+</div>
 
   <div class="err" id="err"></div>
   <footer style="gap:8px"><a class="btn" href="encomenda/" style="text-decoration:none">Encomenda de tabaco</a><button class="btn" id="reset">Trocar chave</button></footer>
@@ -272,7 +315,7 @@ async function load() {
     if (!r.ok) throw new Error("HTTP " + r.status);
     const data = await r.json();
     $("setup").style.display = "none";
-    $("app").style.display = "block";
+    $("app").style.display = "flex";
     $("err").textContent = "";
     render(data);
   } catch (e) {
@@ -333,16 +376,47 @@ function renderTaloes(list, ulId) {
   });
 }
 
+const OBJ_DIA = 1850; // vendas/dia para cobrir custos (estimativa)
+function pc(v) { return String(v).replace(".", ",") + "%"; }
+function curto(v) {
+  if (v >= 1e6) return (v / 1e6).toFixed(2).replace(".", ",") + " M€";
+  if (v >= 1e5) return (v / 1e3).toFixed(1).replace(".", ",") + "k €";
+  return eur0.format(v);
+}
+function renderHero(d) {
+  const m = d.mes || {}, a = d.ano || {}, t = (d.hoje || {}).total || 0;
+  $("hMes").textContent = m.atual !== undefined ? curto(m.atual) : "—";
+  $("hMesS").textContent = m.dia ? `dia ${m.dia}` : "";
+  $("hMesM").textContent = m.margem_pct !== undefined ? `margem ${pc(m.margem_pct)}` : "";
+  $("hAno").textContent = a.total !== undefined ? curto(a.total) : "—";
+  $("hAnoM").textContent = a.margem_pct !== undefined ? `margem ${pc(a.margem_pct)}` : "";
+  const p = Math.round(t / OBJ_DIA * 100);
+  $("gObj").textContent = eur0.format(OBJ_DIA);
+  $("gPct").textContent = p + "%";
+  $("gBar").style.width = Math.min(100, p) + "%";
+  $("gTxt").textContent = t >= OBJ_DIA ? `Custos de hoje cobertos ✓ (+${eur0.format(t - OBJ_DIA)})` : `Faltam ${eur0.format(OBJ_DIA - t)} para cobrir os custos de hoje`;
+}
+function renderTabaco(tb) {
+  if (!tb || !tb.tabaco || !tb.resto) { $("tabCard").style.display = "none"; return; }
+  const T = tb.tabaco, R = tb.resto, tot = (T.vendas + R.vendas) || 1, lt = (T.lucro + R.lucro) || 1;
+  $("tabCard").style.display = "block";
+  $("tabSplit").innerHTML = `<span style="width:${T.vendas / tot * 100}%;background:var(--accent)"></span><span style="width:${R.vendas / tot * 100}%;background:var(--warn)"></span>`;
+  const ln = (n, o) => `<div class="ln"><span>${n}<small>${eur0.format(o.vendas)} vendidos · margem ${pc(o.pct)}</small></span><b>+${eur0.format(o.lucro)}</b></div>`;
+  $("tabLn").innerHTML = ln("Tabaco", T) + ln("Resto da loja", R);
+  $("tabNote").textContent = R.vendas > 0 ? `O resto é ${Math.round(R.vendas / tot * 100)}% das vendas e dá ${Math.round(R.lucro / lt * 100)}% do lucro.` : "";
+}
 function render(d) {
   const h = d.hoje || {};
   const c = d.comparacao || {};
   $("tot").textContent = eur.format(h.total || 0);
   const tm = h.vendas ? (h.total / h.vendas) : 0;
-  $("nv").textContent = `${h.vendas || 0} vendas · talão médio ${eur.format(tm)}`;
+  $("nv").textContent = `${h.vendas || 0} vendas`;
 
   const mg = d.margem;
   $("mg").textContent = (mg && (mg.lucro || mg.pct))
-    ? `Margem ${eur.format(mg.lucro)} · ${String(mg.pct).replace(".", ",")}%` : "";
+    ? `margem ${pc(mg.pct)}` : "";
+  renderHero(d);
+  renderTabaco(d.tabaco);
 
   window._upd = d.atualizado ? new Date(d.atualizado.replace(" ", "T")) : null;
   window._talTs = d.taloes_atualizado ? new Date(d.taloes_atualizado.replace(" ", "T")) : null;
@@ -561,6 +635,14 @@ $("refresh").onclick = () => { $("upd").textContent = "a atualizar…"; load(); 
 load();
 setInterval(load, 60000);
 setInterval(tickStatus, 1000);
+function abreTab(t) {
+  document.querySelectorAll("#tabs3 button").forEach(b => b.classList.toggle("on", b.dataset.t === t));
+  document.querySelectorAll(".tp").forEach(p => p.hidden = p.dataset.t !== t);
+  try { localStorage.setItem("melodias_tab", t); } catch (e) {}
+  if (window._ult) render(window._ult);
+}
+document.querySelectorAll("#tabs3 button").forEach(b => b.onclick = () => abreTab(b.dataset.t));
+try { const t0 = localStorage.getItem("melodias_tab"); if (t0) abreTab(t0); } catch (e) {}
 let _rz; window.addEventListener("resize", () => { clearTimeout(_rz); _rz = setTimeout(() => { const d = window._ult; if (d) { barsDias(arr(d.dias), (d.hoje || {}).data); barsHoras(arr(d.horas)); } }, 150); });
 window.addEventListener("pageshow", load);
 window.addEventListener("focus", load);
