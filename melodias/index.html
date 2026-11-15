@@ -448,7 +448,7 @@ function barsHoras(horas) {
     if (x) {
       const bh = Math.max(2, (x.total / max) * (H - 18));
       s += `<rect x="${xx}" y="${H - bh}" width="${ww}" height="${bh}" rx="2" fill="var(--accent)"><title>${hr}h: ${eur.format(x.total)} (${x.vendas} vendas)</title></rect>`;
-      s += `<text x="${xx + ww / 2}" y="${H - bh - 4}" text-anchor="middle" style="font-size:10px">${Math.round(x.total)}</text>`;
+      s += `<text x="${xx + ww / 2}" y="${H - bh - 4}" text-anchor="middle" style="font-size:${bw < 40 ? 8.5 : 10}px">${Math.round(x.total)}${bw < 40 ? "€" : " €"}</text>`;
     } else {
       s += `<rect x="${xx}" y="${H - 2}" width="${ww}" height="2" rx="1" fill="var(--line)"></rect>`;
     }
