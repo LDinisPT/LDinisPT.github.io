@@ -383,6 +383,7 @@ function render(d) {
   } else { $("talCard").style.display = "none"; }
 
   heatmap(arr(d.heatmap));
+  window._ult = d;
   barsDias(arr(d.dias), h.data);
   barsHoras(arr(d.horas));
 
@@ -409,12 +410,14 @@ function render(d) {
   ).join("") : `<li class="empty">Ainda sem vendas hoje.</li>`;
 }
 
+function larg(id) { const el = $(id); return Math.max(300, Math.round((el && el.clientWidth) || 840)); }
+
 function barsDias(dias, hoje) {
-  const W = 840, H = 150, pad = 18;
+  const W = larg("chDias"), H = 150, pad = 18;
   if (!dias.length) { $("chDias").innerHTML = `<div class="empty">Sem dados.</div>`; return; }
   const max = Math.max(...dias.map(x => x.total)) || 1;
   const bw = (W - 8) / dias.length;
-  let s = `<svg viewBox="0 0 ${W} ${H + pad}" width="100%" role="img" preserveAspectRatio="none">`;
+  let s = `<svg viewBox="0 0 ${W} ${H + pad}" width="100%" role="img">`;
   dias.forEach((x, i) => {
     const bh = Math.max(2, (x.total / max) * (H - 18));
     const xx = 4 + i * bw + bw * 0.18, ww = bw * 0.64, yy = H - bh;
@@ -422,14 +425,15 @@ function barsDias(dias, hoje) {
     const dt = new Date(x.dia + "T12:00:00");
     const fill = isHoje ? "var(--accent)" : "color-mix(in srgb,var(--accent) 45%,var(--paper))";
     s += `<rect x="${xx}" y="${yy}" width="${ww}" height="${bh}" rx="3" fill="${fill}"><title>${x.dia}: ${eur.format(x.total)} (${x.vendas} vendas)</title></rect>`;
-    if (isHoje || i % 2 === dias.length % 2) s += `<text x="${xx + ww / 2}" y="${yy - 4}" text-anchor="middle" style="font-size:10px">${Math.round(x.total / 100) / 10}k</text>`;
-    s += `<text x="${xx + ww / 2}" y="${H + 13}" text-anchor="middle">${DIAS[dt.getDay()]}</text>`;
+    const fs = bw < 32 ? 8.5 : 10;
+    s += `<text x="${xx + ww / 2}" y="${yy - 4}" text-anchor="middle" style="font-size:${fs}px">${(x.total / 1000).toFixed(1).replace(".", ",")}k</text>`;
+    s += `<text x="${xx + ww / 2}" y="${H + 13}" text-anchor="middle" style="font-size:${bw < 32 ? 9 : 11}px">${DIAS[dt.getDay()]}</text>`;
   });
   $("chDias").innerHTML = s + `</svg>`;
 }
 
 function barsHoras(horas) {
-  const W = 840, H = 120, pad = 18;
+  const W = larg("chHoras"), H = 130, pad = 18;
   if (!horas.length) { $("chHoras").innerHTML = `<div class="empty">Ainda sem vendas hoje.</div>`; return; }
   const ini = Math.min(8, ...horas.map(x => x.hora));
   const fim = Math.max(21, ...horas.map(x => x.hora));
@@ -437,13 +441,14 @@ function barsHoras(horas) {
   const n = fim - ini + 1;
   const max = Math.max(...horas.map(x => x.total)) || 1;
   const bw = (W - 8) / n;
-  let s = `<svg viewBox="0 0 ${W} ${H + pad}" width="100%" role="img" preserveAspectRatio="none">`;
+  let s = `<svg viewBox="0 0 ${W} ${H + pad}" width="100%" role="img">`;
   for (let i = 0; i < n; i++) {
     const hr = ini + i, x = map[hr];
     const xx = 4 + i * bw + bw * 0.18, ww = bw * 0.64;
     if (x) {
-      const bh = Math.max(2, (x.total / max) * (H - 6));
+      const bh = Math.max(2, (x.total / max) * (H - 18));
       s += `<rect x="${xx}" y="${H - bh}" width="${ww}" height="${bh}" rx="2" fill="var(--accent)"><title>${hr}h: ${eur.format(x.total)} (${x.vendas} vendas)</title></rect>`;
+      s += `<text x="${xx + ww / 2}" y="${H - bh - 4}" text-anchor="middle" style="font-size:10px">${Math.round(x.total)}</text>`;
     } else {
       s += `<rect x="${xx}" y="${H - 2}" width="${ww}" height="2" rx="1" fill="var(--line)"></rect>`;
     }
@@ -556,6 +561,7 @@ $("refresh").onclick = () => { $("upd").textContent = "a atualizar…"; load(); 
 load();
 setInterval(load, 60000);
 setInterval(tickStatus, 1000);
+let _rz; window.addEventListener("resize", () => { clearTimeout(_rz); _rz = setTimeout(() => { const d = window._ult; if (d) { barsDias(arr(d.dias), (d.hoje || {}).data); barsHoras(arr(d.horas)); } }, 150); });
 window.addEventListener("pageshow", load);
 window.addEventListener("focus", load);
 document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
