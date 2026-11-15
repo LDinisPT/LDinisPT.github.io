@@ -257,7 +257,17 @@ footer{display:flex;justify-content:center;margin-top:4px}
   </section>
 </div>
 <div class="tp" data-t="f" hidden>
-  <section class="card"><h2>Fechos</h2><div class="note">Em preparação: jogos de ontem, Payshop, sobras/faltas e resultado estimado.</div></section>
+  <section class="card"><h2>Resultado estimado</h2>
+    <div class="kpis" style="grid-template-columns:1fr 1fr">
+      <div class="kpi"><div class="k" id="fR1k">Último fecho</div><div class="v" id="fR1">—</div></div>
+      <div class="kpi"><div class="k" id="fR2k">Mês</div><div class="v" id="fR2">—</div></div>
+    </div>
+    <div id="fRdet" style="margin-top:10px"></div>
+    <div class="note">Margem da loja (Sage) + comissões dos jogos (10% raspadinhas, ~5,4% outros) + serviços − custos fixos (~12 500 €/mês). É uma estimativa.</div>
+  </section>
+  <section class="card"><h2 id="fJt">Jogos</h2><div id="fJ"></div></section>
+  <section class="card"><h2>Payshop e depósitos</h2><div id="fP"></div></section>
+  <section class="card"><h2>Últimos fechos</h2><ul class="lst" id="fL"></ul><div class="note" id="fNota"></div></section>
 </div>
 <div class="tp" data-t="s" hidden>
   <section class="card"><h2>Stock</h2><div class="note">Em preparação: stock a acabar e artigos parados.</div></section>
@@ -318,6 +328,7 @@ async function load() {
     $("app").style.display = "flex";
     $("err").textContent = "";
     render(data);
+    if (!window._fechos) loadFechos();
   } catch (e) {
     $("err").textContent = "Sem ligação. A mostrar os últimos dados. (" + e.message + ")";
   }
@@ -417,6 +428,7 @@ function render(d) {
     ? `margem ${pc(mg.pct)}` : "";
   renderHero(d);
   renderTabaco(d.tabaco);
+  setTimeout(renderFechos, 0);
 
   window._upd = d.atualizado ? new Date(d.atualizado.replace(" ", "T")) : null;
   window._talTs = d.taloes_atualizado ? new Date(d.taloes_atualizado.replace(" ", "T")) : null;
@@ -635,6 +647,70 @@ $("refresh").onclick = () => { $("upd").textContent = "a atualizar…"; load(); 
 load();
 setInterval(load, 60000);
 setInterval(tickStatus, 1000);
+
+// ---- Fechos (copia diaria da app Fecho de Caixa) ----
+const TX_RASP = 0.10, TX_JOGOS = 0.054, CUSTOS_MES = 12500, SERV_MES = 1204;
+function sinal(v) { return (v >= 0 ? "+" : "−") + eur0.format(Math.abs(v)); }
+function clsV(v) { return v >= 0 ? "pos" : "neg"; }
+function dataPt(iso) { const [y, m, dd] = iso.split("-"); return new Date(+y, m - 1, +dd).toLocaleDateString("pt-PT", { weekday: "short", day: "2-digit", month: "2-digit" }); }
+async function loadFechos() {
+  const tok = getTok(); if (!tok) return;
+  try {
+    const r = await fetch(`https://api.github.com/repos/${REPO}/contents/fechos.json?t=${Date.now()}`, { headers: { Authorization: `Bearer ${tok}`, Accept: "application/vnd.github.raw+json" }, cache: "no-store" });
+    if (!r.ok) return;
+    window._fechos = await r.json();
+    renderFechos();
+  } catch (e) {}
+}
+function renderFechos() {
+  const F = window._fechos; if (!F || !arr(F.fechos).length) return;
+  const d = window._ult || {};
+  const mdMap = {}; arr(d.margem_dias).forEach(x => mdMap[x.d] = x.pct);
+  const mPadrao = (d.mes && d.mes.margem_pct) || 10;
+  const calc = f => {
+    const dm = new Date(f.d.slice(0, 4), f.d.slice(5, 7), 0).getDate();
+    const mg = mdMap[f.d] !== undefined ? mdMap[f.d] : mPadrao;
+    const loja = f.diaria * mg / 100;
+    const rasp = f.raspValor * TX_RASP, jog = f.vendasSC * TX_JOGOS;
+    const serv = SERV_MES / dm, cust = CUSTOS_MES / dm;
+    return { loja, rasp, jog, serv, cust, res: loja + rasp + jog + serv - cust, mg };
+  };
+  const lst = arr(F.fechos).slice().sort((a, b) => a.d < b.d ? -1 : 1);
+  const ult = lst[lst.length - 1], cu = calc(ult);
+  const mesK = ult.d.slice(0, 7), doMes = lst.filter(f => f.d.slice(0, 7) === mesK);
+  const S = { loja: 0, rasp: 0, jog: 0, serv: 0, cust: 0, res: 0 };
+  doMes.forEach(f => { const c = calc(f); for (const k in S) S[k] += c[k]; });
+  $("fR1k").textContent = "Fecho " + dataPt(ult.d);
+  $("fR1").textContent = sinal(cu.res); $("fR1").className = "v " + clsV(cu.res);
+  $("fR2k").textContent = `Mês (${doMes.length} fechos)`;
+  $("fR2").textContent = sinal(S.res); $("fR2").className = "v " + clsV(S.res);
+  const ln = (n, sub, v, c) => `<div class="ln"><span>${n}${sub ? `<small>${sub}</small>` : ""}</span><b class="${c || ""}">${v}</b></div>`;
+  const sVend = doMes.reduce((a, f) => a + f.diaria, 0), sRasp = doMes.reduce((a, f) => a + f.raspValor, 0), sJog = doMes.reduce((a, f) => a + f.vendasSC, 0);
+  $("fRdet").innerHTML =
+    ln("Margem da loja", `${eur0.format(sVend)} vendidos (Diária)`, sinal(S.loja), "pos") +
+    ln("Comissão raspadinhas", `10% de ${eur0.format(sRasp)}`, sinal(S.rasp), "pos") +
+    ln("Comissão outros jogos", `~5,4% de ${eur0.format(sJog)}`, sinal(S.jog), "pos") +
+    ln("Serviços", "CTT, DPD, InPost (média)", sinal(S.serv), "pos") +
+    ln("Custos fixos", `${doMes.length} dias`, sinal(-S.cust), "neg");
+  $("fJt").textContent = "Jogos · fecho de " + dataPt(ult.d);
+  $("fJ").innerHTML =
+    ln("Raspadinhas", `${ult.raspVendidas} vendidas · ${eur0.format(ult.raspValor)}`, sinal(cu.rasp), "pos") +
+    ln("Outros jogos", `${eur0.format(ult.vendasSC)} vendidos`, sinal(cu.jog), "pos") +
+    ln("Prémios pagos", "", eur0.format(ult.premiosSC)) +
+    ln("Sobras/faltas jogos", "Responsável: " + (ult.resp || "—"), ult.difJogos === undefined ? "por contar" : (ult.difJogos >= 0 ? "+" : "−") + eur.format(Math.abs(ult.difJogos)), ult.difJogos === undefined ? "" : (Math.abs(ult.difJogos) < 5 ? "" : clsV(ult.difJogos)));
+  const sPay = doMes.reduce((a, f) => a + f.payshop, 0), sDep = doMes.reduce((a, f) => a + (f.dep || 0), 0);
+  $("fP").innerHTML =
+    ln("Payshop · " + dataPt(ult.d), "", eur0.format(ult.payshop)) +
+    ln("Payshop · mês", "", eur0.format(sPay)) +
+    ln("Multibanco · " + dataPt(ult.d), "", eur0.format(ult.mb)) +
+    ln("Depositado · mês", "", eur0.format(sDep));
+  $("fL").innerHTML = lst.slice(-10).reverse().map(f => {
+    const c = calc(f);
+    const dif = f.difJogos === undefined ? "" : ` · jogos ${f.difJogos >= 0 ? "+" : "−"}${eur.format(Math.abs(f.difJogos))}`;
+    return `<li style="grid-template-columns:1fr auto"><span class="a">${dataPt(f.d)} <small>· ${eur0.format(f.diaria)}${dif}</small></span><span class="t ${clsV(c.res)}">${sinal(c.res)}</span></li>`;
+  }).join("");
+  $("fNota").textContent = "Cópia dos fechos atualizada a " + String(F.atualizado || "").slice(0, 16).replace("T", " ") + ".";
+}
 function abreTab(t) {
   document.querySelectorAll("#tabs3 button").forEach(b => b.classList.toggle("on", b.dataset.t === t));
   document.querySelectorAll(".tp").forEach(p => p.hidden = p.dataset.t !== t);
