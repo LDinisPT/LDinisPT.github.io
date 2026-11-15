@@ -452,7 +452,7 @@ function barsHoras(horas) {
     } else {
       s += `<rect x="${xx}" y="${H - 2}" width="${ww}" height="2" rx="1" fill="var(--line)"></rect>`;
     }
-    if (hr % 2 === 0) s += `<text x="${xx + ww / 2}" y="${H + 13}" text-anchor="middle">${hr}h</text>`;
+    s += `<text x="${xx + ww / 2}" y="${H + 13}" text-anchor="middle" style="font-size:${bw < 40 ? 9 : 11}px">${hr}h</text>`;
   }
   $("chHoras").innerHTML = s + `</svg>`;
 }
