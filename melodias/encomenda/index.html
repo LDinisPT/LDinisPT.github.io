@@ -43,6 +43,9 @@ body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15p
 header{display:flex;flex-wrap:nowrap;align-items:flex-start;justify-content:space-between;gap:12px}
 .brand{flex:1;min-width:0}
 .hdr-r{flex-shrink:0}
+.hdr-c{display:flex;flex-direction:column;align-items:flex-end;gap:3px;flex-shrink:0}
+.prox{font:12px var(--mono);color:var(--muted);white-space:nowrap}
+.prox b{color:var(--ink);font-weight:600}
 .brand small{display:block;font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--accent)}
 .brand h1{font-family:var(--display);font-size:clamp(24px,6vw,30px);margin:2px 0 0;line-height:1.1}
 .hdr-r{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;margin-top:4px}
@@ -191,9 +194,12 @@ details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
     <h1>Encomenda <span class="beta">BETA</span></h1>
     <span class="co">C.C. E.Leclerc, Loja 4 · Figueira da Foz</span>
   </div>
-  <div class="hdr-r">
-    <button class="btn" id="refresh">↻ <span id="upd">atualizar</span></button>
-    <button class="btn theme" id="theme">Tema</button>
+  <div class="hdr-c">
+    <div class="hdr-r">
+      <button class="btn" id="refresh">↻ <span id="upd">atualizar</span></button>
+      <button class="btn theme" id="theme">Tema</button>
+    </div>
+    <div class="prox" id="prox"></div>
   </div>
 </header>
 
@@ -939,12 +945,40 @@ $("reset").onclick = () => { delTok(); showSetup(); };
 $("save").onclick = () => { const v=$("tok").value.trim(); if(!v) return; setTok(v); $("tok").value=""; load(); };
 $("refresh").onclick = () => load();
 
+// ---------- contador para a próxima atualização ----------
+// o collector envia a encomenda de 30 em 30 min, das 8h às 21h; chega ao GitHub ~1 min depois
+function proxima(at){
+  const d = new Date(at.replace(" ","T"));
+  let n = new Date(d.getTime() + 30*60000 + 60000);
+  const h = n.getHours() + n.getMinutes()/60;
+  if (h >= 22 || n.getDate() !== d.getDate()) {             // depois da última do dia (21h30): amanhã às 8h
+    n = new Date(d); n.setDate(d.getDate() + (d.getHours() >= 8 ? 1 : 0)); n.setHours(8, d.getMinutes() % 30 + 1, 0, 0);
+  } else if (h < 8) { n.setHours(8, d.getMinutes() % 30 + 1, 0, 0); }
+  return n;
+}
+let autoTent = 0;
+function tic(){
+  if (!DADOS) return;
+  const n = proxima(DADOS.atualizado), falta = Math.round((n - new Date())/1000);
+  const hh = String(n.getHours()).padStart(2,"0") + ":" + String(n.getMinutes()).padStart(2,"0");
+  if (falta > 0) {
+    const m = Math.floor(falta/60), sg = String(falta%60).padStart(2,"0");
+    const txt = m >= 60 ? Math.floor(m/60) + "h" + String(m%60).padStart(2,"0") : m + ":" + sg;
+    $("prox").innerHTML = `próxima ${hh} · faltam <b>${txt}</b>`;
+  } else {
+    $("prox").innerHTML = `próxima ${hh} · <b>a chegar…</b>`;
+    // vai buscar sozinho (no máx. de 2 em 2 min) sem perder os ajustes
+    if (Date.now() - autoTent > 120000) { autoTent = Date.now(); load(true); }
+  }
+}
+setInterval(tic, 1000);
+
 function showSetup(msg){ $("app").style.display="none"; $("bar").style.display="none"; $("setup").style.display="block"; $("setupErr").textContent = msg || ""; }
 
-async function load(){
+async function load(silencioso){
   const tok = getTok();
   if (!tok) return showSetup();
-  $("upd").textContent = "a carregar…";
+  if (!silencioso) $("upd").textContent = "a carregar…";
   try {
     const r = await fetch(`https://api.github.com/repos/${REPO}/contents/${FILE}?t=${Date.now()}`, {
       headers: { Authorization: `Bearer ${tok}`, Accept: "application/vnd.github.raw+json" }, cache: "no-store" });
@@ -952,7 +986,10 @@ async function load(){
     if (r.status===404) { $("upd").textContent="sem dados"; return showSetup("Ainda não há dados da encomenda (o collector envia de meia em meia hora, das 8h às 21h)."); }
     if (!r.ok) throw new Error("HTTP " + r.status);
     const d = await r.json();
+    const novo = DADOS && d.atualizado !== DADOS.atualizado;
+    if (silencioso && DADOS && !novo) return;            // ainda não chegou
     prepara(d);
+    if (silencioso && novo) toast("Dados atualizados (" + d.atualizado.slice(11,16) + ")");
     $("setup").style.display="none"; $("app").style.display="flex"; $("bar").style.display="block"; $("err").textContent="";
     $("upd").textContent = "dados " + d.atualizado.slice(8,10) + "/" + d.atualizado.slice(5,7) + " " + d.atualizado.slice(11,16);
     render();
