@@ -201,6 +201,8 @@ details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
 .frow small{color:var(--muted);font-size:12px}
 .fbx{width:20px;height:20px;border-radius:5px;border:2px solid var(--good);display:inline-flex;align-items:center;justify-content:center;font-size:13px;color:#06191c;flex-shrink:0}
 .fbx.v{background:var(--good)}
+.nuvem{font:12px var(--mono);color:var(--muted);white-space:nowrap}
+.nuvem.bom{color:var(--good)}.nuvem.mau{color:var(--warn)}
 .beta{font-size:11px;font-weight:700;color:var(--accent-ink);background:var(--accent);border-radius:6px;padding:1px 6px;vertical-align:4px;margin-left:4px}
 </style>
 </head>
@@ -219,6 +221,7 @@ details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
       <button class="btn theme" id="theme">Tema</button>
     </div>
     <div class="prox" id="prox"></div>
+    <div class="nuvem" id="nuvem"></div>
   </div>
 </header>
 
@@ -342,7 +345,66 @@ function getTok(){ try { return localStorage.getItem(KEY); } catch(e){ return nu
 function setTok(v){ try { localStorage.setItem(KEY, v); } catch(e){} }
 function delTok(){ try { localStorage.removeItem(KEY); } catch(e){} }
 function lerEst(){ try { return JSON.parse(localStorage.getItem(EST)) || {}; } catch(e){ return {}; } }
-function gravaEst(){ try { localStorage.setItem(EST, JSON.stringify(est)); } catch(e){} }
+function gravaEst(semNuvem){
+  if (!semNuvem) est.ts = Date.now();
+  try { localStorage.setItem(EST, JSON.stringify(est)); } catch(e){}
+  if (!semNuvem) nuvemAgenda();
+}
+// ---------- gravação partilhada (GitHub: encomenda-estado.json) ----------
+const ESTF = "encomenda-estado.json";
+let nuvemSha = null, nuvemT = null, nuvemOcupado = false, nuvemPend = false, nuvemOk = null, nuvemHora = "";
+const b64e = t => btoa(unescape(encodeURIComponent(t)));
+const b64d = t => decodeURIComponent(escape(atob(t.replace(/\n/g,""))));
+function nuvemEstado(txt, cls){ const e = $("nuvem"); if (e) { e.textContent = txt; e.className = "nuvem " + (cls||""); } }
+function nuvemAgenda(){ nuvemPend = true; clearTimeout(nuvemT); nuvemT = setTimeout(nuvemGrava, 1500); nuvemEstado("☁ a gravar…"); }
+async function nuvemLe(){
+  const tok = getTok(); if (!tok) return null;
+  const r = await fetch(`https://api.github.com/repos/${REPO}/contents/${ESTF}?t=${Date.now()}`, {
+    headers: { Authorization: `Bearer ${tok}`, Accept: "application/vnd.github+json" }, cache: "no-store" });
+  if (r.status === 404) { nuvemSha = null; return {}; }
+  if (!r.ok) throw new Error("HTTP " + r.status);
+  const j = await r.json(); nuvemSha = j.sha;
+  try { return JSON.parse(b64d(j.content)); } catch(e) { return {}; }
+}
+async function nuvemGrava(tentativa){
+  if (nuvemOcupado) { nuvemAgenda(); return; }
+  nuvemOcupado = true;
+  try {
+    const tok = getTok();
+    const body = { message: "estado da encomenda " + new Date().toLocaleString("pt-PT"), content: b64e(JSON.stringify(est)) };
+    if (nuvemSha) body.sha = nuvemSha;
+    const r = await fetch(`https://api.github.com/repos/${REPO}/contents/${ESTF}`, {
+      method: "PUT", headers: { Authorization: `Bearer ${tok}`, Accept: "application/vnd.github+json", "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (r.status === 409 || r.status === 422) {            // alguém gravou entretanto: fica a última alteração (esta)
+      await nuvemLe(); nuvemOcupado = false; if (!tentativa) return nuvemGrava(1); throw new Error("conflito");
+    }
+    if (r.status === 403 || r.status === 401) { nuvemOk = false; nuvemPend = false; nuvemEstado("⚠ só neste aparelho — a chave não pode gravar", "mau"); return; }
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const j = await r.json(); nuvemSha = j.content && j.content.sha; nuvemOk = true; nuvemPend = false;
+    nuvemHora = new Date().toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"});
+    nuvemEstado("☁ gravado " + nuvemHora, "bom");
+  } catch(e) {
+    nuvemEstado("⚠ não gravou na nuvem (" + e.message + ") — tenta de novo", "mau");
+  } finally { nuvemOcupado = false; }
+}
+// vai buscar o estado partilhado; se for mais recente que o deste aparelho, usa-o
+async function nuvemSync(primeira){
+  if (nuvemPend || nuvemOcupado || !getTok()) return;
+  try {
+    const rem = await nuvemLe();
+    if (rem === null) return;
+    if (rem.ts && (!est.ts || rem.ts > est.ts)) {
+      est = rem; gravaEst(true);
+      if (DADOS) { const e0 = enc; prepara(DADOS); if (ENCS.includes(e0)) enc = e0; render(); }
+      if (!primeira) toast("Alterações de outro aparelho carregadas");
+      nuvemEstado("☁ sincronizado " + new Date().toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"}), "bom");
+    } else if (est.ts && (!rem.ts || est.ts > rem.ts)) {
+      nuvemGrava();                                   // este aparelho tem coisas mais recentes
+    } else nuvemEstado("☁ sincronizado", "bom");
+  } catch(e) { nuvemEstado("⚠ sem ligação à gravação partilhada", "mau"); }
+}
+setInterval(() => nuvemSync(false), 45000);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) nuvemSync(false); });
 
 // tema (partilhado com o painel)
 try { const th = localStorage.getItem("melodias_theme"); if (th) document.documentElement.setAttribute("data-theme", th); } catch(e){}
@@ -1062,6 +1124,7 @@ async function load(silencioso){
     const d = await r.json();
     const novo = DADOS && d.atualizado !== DADOS.atualizado;
     if (silencioso && DADOS && !novo) return;            // ainda não chegou
+    if (!DADOS) { try { await nuvemSync(true); } catch(_){} }
     prepara(d);
     if (silencioso && novo) toast("Dados atualizados (" + d.atualizado.slice(11,16) + ")");
     $("setup").style.display="none"; $("app").style.display="flex"; $("bar").style.display="block"; $("err").textContent="";
