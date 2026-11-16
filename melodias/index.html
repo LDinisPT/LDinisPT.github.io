@@ -276,7 +276,7 @@ footer{display:flex;justify-content:center;margin-top:4px}
       <div class="kpi"><div class="k" id="fR2k">Mês</div><div class="v" id="fR2">—</div></div>
     </div>
     <div id="fRdet" style="margin-top:10px"></div>
-    <div class="note">Margem da loja (Sage) + comissões dos jogos (10% raspadinhas, ~5,4% outros) + serviços − custos fixos (~12 500 €/mês). É uma estimativa.</div>
+    <div class="note">Margem da loja (Sage) + comissões dos jogos (10% raspadinhas, ~5,4% outros) + serviços − custos fixos (~13 430 €/mês). É uma estimativa.</div>
   </section>
   <section class="card"><h2 id="fJt">Jogos</h2><div id="fJ"></div></section>
   <section class="card"><h2>Payshop e depósitos</h2><div id="fP"></div></section>
@@ -410,7 +410,7 @@ function renderTaloes(list, ulId) {
   });
 }
 
-const OBJ_DIA = 1850; // vendas/dia para cobrir custos (estimativa)
+const OBJ_DIA = 2170; // vendas/dia para cobrir custos (estimativa)
 function pc(v) { return String(v).replace(".", ",") + "%"; }
 function curto(v) {
   if (v >= 1e6) return (v / 1e6).toFixed(2).replace(".", ",") + " M€";
@@ -672,7 +672,7 @@ setInterval(load, 60000);
 setInterval(tickStatus, 1000);
 
 // ---- Fechos (copia diaria da app Fecho de Caixa) ----
-const TX_RASP = 0.10, TX_JOGOS = 0.054, CUSTOS_MES = 12500, SERV_MES = 1204;
+const TX_RASP = 0.10, TX_JOGOS = 0.054, CUSTOS_MES = 13430, SERV_MES = 1204;
 function sinal(v) { return (v >= 0 ? "+" : "−") + eur0.format(Math.abs(v)); }
 function clsV(v) { return v >= 0 ? "pos" : "neg"; }
 function dataPt(iso) { const [y, m, dd] = iso.split("-"); return new Date(+y, m - 1, +dd).toLocaleDateString("pt-PT", { weekday: "short", day: "2-digit", month: "2-digit" }); }
