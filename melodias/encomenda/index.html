@@ -155,6 +155,8 @@ header{display:flex;flex-wrap:nowrap;align-items:flex-start;justify-content:spac
 .pkn{flex-shrink:0;text-align:right;font-family:var(--mono);font-size:14px}
 .pkn b{color:#D85A30;font-size:16px}.pkn small{color:#D85A30;font-weight:600}
 .pkf{padding:8px 12px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
+.stkF{margin:-2px 0 8px;padding:6px 8px;border-radius:8px;background:#E1F5EE;color:#085041;font-size:13px}
+[data-theme="dark"] .stkF{background:#085041;color:#E1F5EE}
 .pico{margin:-2px 0 8px;padding:6px 8px;border-radius:8px;background:#D85A30;color:#fff;font-size:13px}
 .item.zero{border-style:dashed;border-left-style:solid;border-left-color:var(--warn);background:color-mix(in srgb, var(--warn) 6%, var(--paper))}
 .item.zero .vol b{color:var(--muted)}
@@ -257,6 +259,10 @@ details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
     <p><b>Média 4 semanas</b>: olha para o habitual. <b>Desde a última encomenda</b>: repõe exatamente o que se vendeu desde a encomenda anterior (domingo: de quarta às 19h a domingo às 19h; quarta: de domingo às 19h a quarta às 19h).</p>
     <div class="seg" id="picos"><button data-v="ignorar" class="on">Ignorar picos</button><button data-v="incluir">Incluir picos</button></div>
     <p><b>Picos</b>: dias em que uma marca vendeu pelo menos 20 maços e mais do triplo do normal (alguém levou vários volumes). Por defeito o excesso não conta.</p>
+    <div class="famT">Stock do Sage</div>
+    <div class="seg" id="stockUso"><button data-v="menos" class="on">Usar só para pedir menos</button><button data-v="off">Não usar</button></div>
+    <div class="seg" id="margem" style="margin-top:6px"><button data-v="0">Margem 0 dias</button><button data-v="1" class="on">1 dia</button><button data-v="2">2 dias</button></div>
+    <p>Se o Sage tem mais stock do que o que se vende até à encomenda mais a <b>margem</b>, pede menos. Stock negativo ou a 0 não conta (ainda faltam faturas e acertos): fica pelas vendas. Nunca pede mais por causa do stock.</p>
     <p style="margin-top:12px"><a class="btn" href="../">← Painel de vendas</a> <button class="btn" id="reset">Trocar chave</button> <button class="btn" id="limpar">Apagar tudo o que está guardado</button></p>
     <div class="conf" id="confLimpar" style="display:none">
       <b>Apagar tudo?</b>
@@ -421,6 +427,8 @@ let DADOS = null, ART = [], DIAS = [], IX = {}, HOJE = "", ENCS = [], CORTE = 0,
 let enc = null, filtro = "Tabaco Novidade", fornSel = null, verZeros = false, soMexidos = false;
 let est = lerEst();
 est.ordem = est.ordem || "alfa"; est.base = est.base || "periodo"; est.picos = est.picos || "ignorar";
+// stock do Sage (17/11): por agora só serve para pedir MENOS; margem = dias de vendas que ficam na prateleira
+est.stock = est.stock || "menos"; if (![0,1,2].includes(est.margem)) est.margem = 1;
 // a Ana pediu (15/11): por defeito "Desde a última encomenda" — aplica uma vez a quem já tinha a página aberta
 if (est.baseV !== 2) { est.base = "periodo"; est.baseV = 2; }
 // famílias que entram na encomenda (pedido 15/11: por defeito só Tabaco Novidade + Tabaco RYO)
@@ -431,6 +439,7 @@ est.resto = est.resto || {};      // {id: maços que transitam}
 est.ped = est.ped || {};          // por encomenda: {data: {aj:{}, urg:{}, novos:[]}}
 
 const D = s => new Date(s + "T12:00:00");
+const fmtN = n => (Math.round(n*10)/10).toLocaleString("pt-PT");
 const iso = d => d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
 const add = (s,n) => { const d = D(s); d.setDate(d.getDate()+n); return iso(d); };
 const dow = s => D(s).getDay();
@@ -461,7 +470,7 @@ function prepara(d){
     if (FAM_TAB.has(a.f)) { if (!v || v < 5 || (v > 10 && v % 10 === 0)) v = 10; }
     else v = v || 1;
     const forns = (a.c||[]).map(x=>[nomeForn(x[0]), x[1]]).sort((p,q)=>p[1]-q[1]);
-    const o = {id:a.i, bc:a.b||"", artigo:a.a, familia:a.f, pvp:a.p||0, vol:v, forns, q:a.q||zeros, temVendas:!!a.q};
+    const o = {id:a.i, bc:a.b||"", artigo:a.a, familia:a.f, pvp:a.p||0, vol:v, forns, q:a.q||zeros, temVendas:!!a.q, stk:(typeof a.s==="number"?a.s:null)};
     const comp = DIAS.filter(x=>x<HOJE).map(x=>o.q[IX[x]]).sort((x,y)=>x-y);
     const p75 = comp[Math.floor(comp.length*0.75)] || 0;
     o.lim = Math.max(3*p75, p75+20, 20); o.norm = Math.ceil(p75);
@@ -527,7 +536,27 @@ function calcula(a){
   const media3 = (w[1]+w[2]+w[3])/3;
   const b = est.base==="periodo" ? w[0] : Math.round(media);
   const alvo = b + resto;
-  const sug = Math.max(0, Math.round(alvo / V));
+  let sug = Math.max(0, Math.round(alvo / V));
+  // stock do Sage: só para pedir MENOS (faturas em falta só fazem o stock parecer mais baixo)
+  let stk = null;
+  if (a.stk !== null && a.stk !== undefined && !a.manual && !foraDia) {
+    const S = a.stk; stk = {S};
+    if (S < 0) stk.rever = true;
+    else if (S > 0 && est.stock !== "off") {
+      const r = (parcial ? media : b) / jw.length;            // maços por dia
+      if (r > 0) {
+        const fimEnc = new Date(enc + "T00:00:00").getTime() + (CORTE||19)*36e5;
+        const at = new Date(String(DADOS.atualizado).replace(" ","T")).getTime();
+        const faltaD = isNaN(at) ? 0 : Math.max(0, (fimEnc - at)/864e5);
+        const util = S - r*faltaD;                             // o que ainda deve haver às 19h da encomenda
+        const sobra = util - est.margem*r;                     // acima da margem
+        if (sobra > 0) {
+          const sugS = Math.max(0, Math.round(Math.max(0, b - sobra) / V));
+          if (sugS < sug) { stk.corta = true; stk.sugV = sug; stk.util = Math.max(0, Math.round(util)); sug = sugS; }
+        }
+      }
+    }
+  }
   // com "incluir picos": quanto pedia sem os picos (para o destaque)
   let sugSem = sug, picos = [];
   if (est.picos === "incluir" && ws.some(x=>x.ex>0)) {
@@ -540,7 +569,7 @@ function calcula(a){
   }
   const adj = p.aj[a.id] || 0;
   const vol = foraDia ? 0 : Math.max(0, sug + adj);
-  const novoResto = (a.manual || foraDia) ? 0 : alvo - vol*V;
+  const novoResto = (a.manual || foraDia || (stk && stk.corta)) ? 0 : alvo - vol*V;
   const mg = (custo && a.pvp) ? (a.pvp-custo)/a.pvp*100 : null;
   const tags = [];
   if (a.manual || p.aj[a.id] && !a.temVendas) tags.push(["add","adicionado"]);
@@ -553,7 +582,7 @@ function calcula(a){
   if (ws[0].ex>0) tags.push(["fora","pico +"+ws[0].ex]);
   if (sem !== undefined) tags.push(["new","semanal · só ao domingo"]);
   const repar = (p.rep && p.rep[a.id]) || null;
-  return {...a, repar, sugSem, picos, foraDia, semanal: sem !== undefined, w, ws, media, b, sug, vol, adj, novoResto, forn, custo, mg, tags, V, resto, urg, parcial, comeca, escolhido: !!esc_};
+  return {...a, stk, repar, sugSem, picos, foraDia, semanal: sem !== undefined, w, ws, media, b, sug, vol, adj, novoResto, forn, custo, mg, tags, V, resto, urg, parcial, comeca, escolhido: !!esc_};
 }
 // preço igual (diferença < 0,1 cênt./maço) em vários fornecedores: divide os volumes entre eles
 function divide(l){
@@ -606,14 +635,15 @@ function cartao(l, f, zero){
         ? `<button class="urg ${l.urg?'on':''}" data-u="${esc(l.id)}">${l.urg?'⚡ Urgente à Bel — tirar':'Esgotado? ⚡ pedir à Bel'}</button>` : "";
       const ex = l.ws[0].ex;
       const det = (l.manual && !l.temVendas) ? "artigo novo — sem histórico de vendas"
-        : `<span style="color:var(--ink)">${l.V>1||FAM_TAB.has(l.familia)?'Maços':'Unidades'}:</span> vendeu <em>${l.ws[0].tot}</em>${ex?` <span style="color:var(--warn)">(${ex} em pico${est.picos==="ignorar"?', não conta':''})</span>`:''} · média <em>${l.media.toFixed(0)}</em>${l.resto?` · resto <em>${l.resto>0?'+':''}${l.resto}</em>`:''} · fica <em>${l.novoResto>0?'+':''}${l.novoResto}</em>`;
+        : `<span style="color:var(--ink)">${l.V>1||FAM_TAB.has(l.familia)?'Maços':'Unidades'}:</span> vendeu <em>${l.ws[0].tot}</em>${ex?` <span style="color:var(--warn)">(${ex} em pico${est.picos==="ignorar"?', não conta':''})</span>`:''} · média <em>${l.media.toFixed(0)}</em>${l.resto?` · resto <em>${l.resto>0?'+':''}${l.resto}</em>`:''} · fica <em>${l.novoResto>0?'+':''}${l.novoResto}</em>${l.stk ? (l.stk.rever ? ` · <span style="color:var(--warn)">stock Sage ${fmtN(l.stk.S)} (a rever, não conta)</span>` : ` · stock <em>${fmtN(l.stk.S)}</em>`) : ''}`;
       const mexido = l.adj !== 0 && l.temVendas;
       const faixa = mexido ? `<div class="mexido">✋ Alterado à mão: sugestão era <b>${l.sug}</b>, ficou <b>${l.sug + l.adj < 0 ? 0 : l.sug + l.adj}</b> (${l.adj>0?'+':''}${l.adj})
           <button class="btn desf" data-r="${esc(l.id)}">↺ Voltar à sugestão</button></div>` : "";
+      const faixaS = (l.stk && l.stk.corta) ? `<div class="stkF">📦 Há stock: o Sage tem <b>${fmtN(l.stk.S)}</b> maços (≈ ${l.stk.util} às ${CORTE||19}h). Pelas vendas pedia <b>${l.stk.sugV}</b> vol, com o stock pede <b>${l.sug}</b>.</div>` : "";
       const comPico = est.picos==="incluir" && l.picos && l.picos.length && l.sug !== l.sugSem;
       const pkTxt = comPico ? l.picos.slice(0,2).map(([d,q])=>`venda de ${q} maços numa venda (${fmt(d)})`).join("; ") + (l.picos.length>2?"; …":"") : "";
       const faixaP = comPico ? `<div class="pico">Inclui pico: ${pkTxt.charAt(0).toUpperCase()+pkTxt.slice(1)}. Sem o pico pedia ${l.sugSem} vol, com o pico pede ${l.sug}.</div>` : "";
-      return `<div class="item ${zero?'zero':''} ${mexido?'mex':''} ${comPico?'pk':''}" data-id="${esc(l.id)}" style="--c:${cor(f)}" title="Duplo clique para escolher / repartir fornecedores">${faixaP}${faixa}
+      return `<div class="item ${zero?'zero':''} ${mexido?'mex':''} ${comPico?'pk':''}" data-id="${esc(l.id)}" style="--c:${cor(f)}" title="Duplo clique para escolher / repartir fornecedores">${faixaP}${faixaS}${faixa}
         <div class="row1">
           <div style="min-width:0"><div class="nome">${esc(l.artigo)}${zero?'<span class="tag t-fora">a 0</span>':''}${tags}</div>
             <div class="fam">${l.familia}${l.pvp?' · PVP '+eur(l.pvp):''}${l.custo?' · custo '+eur(l.custo,3)+' · margem '+l.mg.toFixed(1).replace(".",",")+'%':''}${l.vol?(valor(l)?' · ≈ '+eur0(valor(l)):' · sem preço'):''}</div>
@@ -640,7 +670,7 @@ function famUI(){
 function render(){
   const p = pedAtual();
   $("encomenda").innerHTML = ENCS.map(e=>`<button data-v="${e}" class="${e===enc?'on':''}">${dow(e)===0?'Domingo':'Quarta'} ${dm(e)}${CORTE && e<HOJE?' ✓':''}</button>`).join("");
-  segOn("ordem",est.ordem); segOn("base",est.base); segOn("picos",est.picos);
+  segOn("ordem",est.ordem); segOn("base",est.base); segOn("picos",est.picos); segOn("stockUso",est.stock); segOn("margem",String(est.margem));
   const j0 = janela(enc,0), comeca = j0[0] <= HOJE, jUse = comeca ? j0 : janela(enc,1), parcial = jUse[jUse.length-1] >= HOJE;
   $("periodo").innerHTML = `Repõe as vendas de <b>${ini(jUse[0])}</b> a <b>${fim(jUse[jUse.length-1])}</b>${comeca?'':' (semana passada)'}${CORTE?` · pronta às ${CORTE}h de ${dow(enc)===0?'domingo':'quarta'}`:''}`;
   $("aviso").innerHTML = (!comeca
@@ -651,6 +681,8 @@ function render(){
       : `<div class="aviso">A <b>EuroNovidades</b> é só ao domingo: para ela, esta encomenda repõe a semana inteira (de domingo a domingo, às ${CORTE||19}h).</div>`);
 
   const linhas = artsEnc().map(calcula);
+  const nCorta = linhas.filter(l=>l.stk&&l.stk.corta), nRever = linhas.filter(l=>l.stk&&l.stk.rever&&l.w.some(x=>x>0)).length;
+  if (nCorta.length || nRever) $("aviso").innerHTML += `<div class="aviso">📦 <b>Stock do Sage</b>: ${est.stock==="off" ? "não está a ser usado (Opções)." : `${nCorta.length} artigo${nCorta.length===1?'':'s'} pede${nCorta.length===1?'':'m'} menos porque há stock (−${nCorta.reduce((t,l)=>t+l.stk.sugV-l.sug,0)} vol, margem ${est.margem} dia${est.margem===1?'':'s'}).`} ${nRever} com stock negativo — não conta, fica pelas vendas.</div>`;
   famUI();
   const fams = ["Todos", ...[...new Set(linhas.filter(l=>l.temVendas||l.manual||l.adj).map(l=>l.familia))].sort((a,b)=>a.localeCompare(b,"pt"))];
   if (!fams.includes(filtro)) filtro = "Todos";
@@ -737,6 +769,8 @@ $("encomenda").onclick = e => { const b=e.target.closest("button"); if(!b) retur
 $("ordem").onclick = e => { const b=e.target.closest("button"); if(!b) return; est.ordem=b.dataset.v; gravaEst(); render(); };
 $("base").onclick = e => { const b=e.target.closest("button"); if(!b) return; est.base=b.dataset.v; gravaEst(); render(); };
 $("picos").onclick = e => { const b=e.target.closest("button"); if(!b) return; est.picos=b.dataset.v; gravaEst(); render(); };
+$("stockUso").onclick = e => { const b=e.target.closest("button"); if(!b) return; est.stock=b.dataset.v; gravaEst(); render(); };
+$("margem").onclick = e => { const b=e.target.closest("button"); if(!b) return; est.margem=+b.dataset.v; gravaEst(); render(); };
 $("familias").onclick = e => { const c=e.target.closest(".chip"); if(!c) return; filtro=c.dataset.v; fornSel=null; verZeros=false; render(); };
 $("forns").onclick = e => { const c=e.target.closest(".fcard"); if(!c) return; fornSel=c.dataset.v||null; verZeros=false; render();
   try { $("lista").scrollIntoView({behavior:"smooth", block:"start"}); } catch(_){} };
