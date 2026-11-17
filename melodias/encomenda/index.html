@@ -156,7 +156,12 @@ header{display:flex;flex-wrap:nowrap;align-items:flex-start;justify-content:spac
 .pkn b{color:#D85A30;font-size:16px}.pkn small{color:#D85A30;font-weight:600}
 .pkf{padding:8px 12px;border-top:1px solid var(--line);font-size:12px;color:var(--muted)}
 .stkF{margin:-2px 0 8px;padding:6px 8px;border-radius:8px;background:#E1F5EE;color:#085041;font-size:13px}
-[data-theme="dark"] .stkF{background:#085041;color:#E1F5EE}
+.stkL{margin-top:2px}.stkL b{font-weight:700}.stkL span{opacity:.7}
+.stkL .pos{color:#3B6D11}.stkL .neg{color:#C62828}.stkL .nul{color:#B07A00}
+:root[data-theme="dark"] .stkF{background:#085041;color:#E1F5EE}
+:root[data-theme="dark"] .stkL .pos{color:#97C459}:root[data-theme="dark"] .stkL .neg{color:#F09595}:root[data-theme="dark"] .stkL .nul{color:#FAC775}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .stkF{background:#085041;color:#E1F5EE}
+:root:not([data-theme="light"]) .stkL .pos{color:#97C459}:root:not([data-theme="light"]) .stkL .neg{color:#F09595}:root:not([data-theme="light"]) .stkL .nul{color:#FAC775}}
 .pico{margin:-2px 0 8px;padding:6px 8px;border-radius:8px;background:#D85A30;color:#fff;font-size:13px}
 .item.zero{border-style:dashed;border-left-style:solid;border-left-color:var(--warn);background:color-mix(in srgb, var(--warn) 6%, var(--paper))}
 .item.zero .vol b{color:var(--muted)}
@@ -635,7 +640,7 @@ function cartao(l, f, zero){
         ? `<button class="urg ${l.urg?'on':''}" data-u="${esc(l.id)}">${l.urg?'⚡ Urgente à Bel — tirar':'Esgotado? ⚡ pedir à Bel'}</button>` : "";
       const ex = l.ws[0].ex;
       const det = (l.manual && !l.temVendas) ? "artigo novo — sem histórico de vendas"
-        : `<span style="color:var(--ink)">${l.V>1||FAM_TAB.has(l.familia)?'Maços':'Unidades'}:</span> vendeu <em>${l.ws[0].tot}</em>${ex?` <span style="color:var(--warn)">(${ex} em pico${est.picos==="ignorar"?', não conta':''})</span>`:''} · média <em>${l.media.toFixed(0)}</em>${l.resto?` · resto <em>${l.resto>0?'+':''}${l.resto}</em>`:''} · fica <em>${l.novoResto>0?'+':''}${l.novoResto}</em>${l.stk ? (l.stk.rever ? ` · <span style="color:var(--warn)">stock Sage ${fmtN(l.stk.S)} (a rever, não conta)</span>` : ` · stock <em>${fmtN(l.stk.S)}</em>`) : ''}`;
+        : `<span style="color:var(--ink)">${l.V>1||FAM_TAB.has(l.familia)?'Maços':'Unidades'}:</span> vendeu <em>${l.ws[0].tot}</em>${ex?` <span style="color:var(--warn)">(${ex} em pico${est.picos==="ignorar"?', não conta':''})</span>`:''} · média <em>${l.media.toFixed(0)}</em>${l.resto?` · resto <em>${l.resto>0?'+':''}${l.resto}</em>`:''} · fica <em>${l.novoResto>0?'+':''}${l.novoResto}</em>${l.stk ? `<div class="stkL">Stock Sage: <b class="${l.stk.S>0?'pos':l.stk.S<0?'neg':'nul'}">${fmtN(l.stk.S)}</b>${l.stk.S<0?' <span>(a rever, não conta)</span>':''}</div>` : ''}`;
       const mexido = l.adj !== 0 && l.temVendas;
       const faixa = mexido ? `<div class="mexido">✋ Alterado à mão: sugestão era <b>${l.sug}</b>, ficou <b>${l.sug + l.adj < 0 ? 0 : l.sug + l.adj}</b> (${l.adj>0?'+':''}${l.adj})
           <button class="btn desf" data-r="${esc(l.id)}">↺ Voltar à sugestão</button></div>` : "";
