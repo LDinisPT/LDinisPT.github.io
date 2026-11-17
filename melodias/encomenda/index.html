@@ -82,6 +82,28 @@ header{display:flex;flex-wrap:nowrap;align-items:flex-start;justify-content:spac
 .fcard.todos{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;gap:8px}
 .ordem{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .ordem .seg{flex:0 0 auto}
+.topo{display:flex;gap:8px;align-items:stretch}.topo .seg{flex:1}
+.fatBtn{flex:0 0 auto;border:1.5px solid var(--line);background:var(--soft);color:var(--ink);border-radius:10px;padding:0 16px;font:600 13.5px var(--body);cursor:pointer}
+#app.modoFat .fatBtn{border-color:var(--accent);background:var(--paper);color:var(--accent)}
+#app.modoFat .periodo,#app.modoFat #aviso{display:none}
+#app.modoFat > :not(:first-child):not(#fatV){display:none}
+#app:not(.modoFat) #fatV{display:none}
+#fatV{display:flex;flex-direction:column;gap:10px}
+.fmeses{display:flex;flex-wrap:wrap;gap:6px}
+.fmeses button{border:1px solid var(--line);background:var(--paper);color:var(--muted);border-radius:999px;padding:6px 12px;font:600 13px var(--body);cursor:pointer}
+.fmeses button.on{border-color:var(--accent);color:var(--accent)}
+.fsum{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.fsum div{background:var(--paper);border:1px solid var(--line);border-left:4px solid var(--c);border-radius:10px;padding:8px 10px;cursor:pointer;font-size:13px}
+.fsum div.on{outline:2px solid var(--c)}
+.fsum b{display:block;font-size:14px}
+.ftab{background:var(--paper);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.frw{display:grid;grid-template-columns:58px minmax(0,1fr) 70px 90px;gap:8px;padding:9px 12px;border-bottom:1px solid var(--line);font-size:14px;align-items:center}
+.frw:last-child{border-bottom:0}
+.frw.h{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+.frw .n{text-align:right;font-family:var(--mono)}
+.frw small{display:block;color:var(--muted);font-size:12px}
+.frw .fn{border-left:3px solid var(--c);padding-left:8px}
+.fwarn{background:rgba(186,117,23,.14);border-left:4px solid #BA7517;border-radius:8px;padding:8px 10px;font-size:13.5px}
 .add input{width:100%;padding:11px;border-radius:10px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font:15px var(--body)}
 .res{margin-top:6px;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--paper)}
 .res:empty{display:none}
@@ -244,10 +266,11 @@ details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
 
 <main id="app" style="display:none" class="wrap">
   <div>
-    <div class="seg" id="encomenda"></div>
+    <div class="topo"><div class="seg" id="encomenda"></div><button class="fatBtn" id="fatBtn">🧾 Faturas</button></div>
     <div class="periodo" id="periodo"></div>
     <div id="aviso"></div>
   </div>
+  <div id="fatV"></div>
 
   <div class="kpis">
     <div class="kpi"><div class="v" id="kVend">–</div><div class="k">vendidos</div></div>
@@ -674,7 +697,8 @@ function famUI(){
 }
 function render(){
   const p = pedAtual();
-  $("encomenda").innerHTML = ENCS.map(e=>`<button data-v="${e}" class="${e===enc?'on':''}">${dow(e)===0?'Domingo':'Quarta'} ${dm(e)}${CORTE && e<HOJE?' ✓':''}</button>`).join("");
+  const emFat = $("app").classList.contains("modoFat");
+  $("encomenda").innerHTML = ENCS.map(e=>`<button data-v="${e}" class="${e===enc&&!emFat?'on':''}">${dow(e)===0?'Domingo':'Quarta'} ${dm(e)}${CORTE && e<HOJE?' ✓':''}</button>`).join("");
   segOn("ordem",est.ordem); segOn("base",est.base); segOn("picos",est.picos); segOn("stockUso",est.stock); segOn("margem",String(est.margem));
   const j0 = janela(enc,0), comeca = j0[0] <= HOJE, jUse = comeca ? j0 : janela(enc,1), parcial = jUse[jUse.length-1] >= HOJE;
   $("periodo").innerHTML = `Repõe as vendas de <b>${ini(jUse[0])}</b> a <b>${fim(jUse[jUse.length-1])}</b>${comeca?'':' (semana passada)'}${CORTE?` · pronta às ${CORTE}h de ${dow(enc)===0?'domingo':'quarta'}`:''}`;
@@ -770,7 +794,68 @@ function render(){
 function toast(t){ const e=$("toast"); e.textContent=t; e.classList.add("show"); clearTimeout(e._t); e._t=setTimeout(()=>e.classList.remove("show"),1700); }
 
 // ---------- eventos ----------
-$("encomenda").onclick = e => { const b=e.target.closest("button"); if(!b) return; enc=b.dataset.v; fornSel=null; render(); };
+$("encomenda").onclick = e => { const b=e.target.closest("button"); if(!b) return; enc=b.dataset.v; fornSel=null; modoFat(false); render(); };
+$("fatBtn").onclick = () => modoFat(!$("app").classList.contains("modoFat"));
+// ---------- faturas de compra (FCO) ----------
+let FAT = null, fatMes = null, fatForn = null, fatAt = 0;
+function modoFat(on){
+  $("app").classList.toggle("modoFat", on);
+  $("bar").style.display = on ? "none" : "block";
+  document.querySelectorAll("#encomenda button").forEach(b=>b.classList.toggle("on", !on && b.dataset.v===enc));
+  if (on) { window.scrollTo({top:0}); carregaFat(); renderFat(); }
+}
+async function carregaFat(forcar){
+  if (!forcar && FAT && Date.now() - fatAt < 5*60e3) return;
+  try {
+    const r = await fetch(`https://api.github.com/repos/${REPO}/contents/faturas.json?t=${Date.now()}`, {
+      headers: { Authorization: `Bearer ${getTok()}`, Accept: "application/vnd.github.raw+json" }, cache: "no-store" });
+    if (r.status === 404) { FAT = {fat:[], vazio:true}; }
+    else { if (!r.ok) throw new Error("HTTP " + r.status); FAT = await r.json(); }
+    fatAt = Date.now();
+  } catch(e) { if (!FAT) FAT = {fat:[], erro: e.message}; }
+  if ($("app").classList.contains("modoFat")) renderFat();
+}
+const MESES = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+const nomeMes = m => { const [a,b] = m.split("-"); return MESES[+b-1].charAt(0).toUpperCase()+MESES[+b-1].slice(1) + " " + a; };
+function renderFat(){
+  const v = $("fatV");
+  if (!FAT) { v.innerHTML = `<div class="aviso">A carregar as faturas…</div>`; return; }
+  if (FAT.erro) { v.innerHTML = `<div class="aviso">Não consegui carregar as faturas (${esc(FAT.erro)}).</div>`; return; }
+  if (FAT.vazio || !FAT.fat.length) { v.innerHTML = `<div class="aviso">Ainda não há faturas — o PC da loja envia-as de meia em meia hora, com a encomenda.</div>`; return; }
+  const L = FAT.fat.map(x => ({ser:x[0], num:x[1], d:x[2], e:x[3], forn:nomeForn(x[4]), liq:+x[5]||0, tot:+x[6]||0, mc:+x[7]||0, st:String(x[8]??"0")}))
+    .sort((a,b)=> b.d.localeCompare(a.d) || b.e.localeCompare(a.e));
+  const meses = [...new Set(L.map(x=>x.d.slice(0,7)))].sort().reverse();
+  if (!fatMes || !meses.includes(fatMes)) fatMes = meses[0];
+  const doMes = L.filter(x=>x.d.startsWith(fatMes));
+  // aviso: encomenda marcada como feita e ainda sem fatura desse fornecedor
+  const avisos = [];
+  for (const [d, pf] of Object.entries(est.feitaF || {})) {
+    if (add(d,2) > HOJE) continue;                          // ainda pode estar a chegar
+    for (const [f, x] of Object.entries(pf)) {
+      if (f.startsWith("Sem")) continue;
+      const tem = L.some(y => y.forn === f && (y.d >= d || y.e.slice(0,10) >= d));
+      if (!tem) avisos.push(`Encomenda de ${dow(d)===0?'dom':'qua'} ${dm(d)} à <b>${esc(f)}</b> (${x.v} vol ≈ ${eur0(x.e)}) — ainda sem fatura lançada`);
+    }
+  }
+  const sf = {}; doMes.forEach(x => { const o = (sf[x.forn] ||= {n:0,liq:0}); o.n++; o.liq += x.liq; });
+  const fs = Object.keys(sf).sort((a,b)=>sf[b].liq-sf[a].liq);
+  if (fatForn && !sf[fatForn]) fatForn = null;
+  const vis = fatForn ? doMes.filter(x=>x.forn===fatForn) : doMes;
+  const totLiq = doMes.reduce((t,x)=>t+x.liq,0), totMc = doMes.reduce((t,x)=>t+x.mc,0);
+  const dd = s => s.slice(8,10)+"/"+s.slice(5,7);
+  v.innerHTML =
+    `<div class="fmeses">${meses.map(m=>`<button data-m="${m}" class="${m===fatMes?'on':''}">${nomeMes(m).slice(0,3)} ${m.slice(2,4)}</button>`).join("")}</div>` +
+    avisos.map(a=>`<div class="fwarn">⚠ ${a}</div>`).join("") +
+    `<div class="kpis"><div class="kpi"><div class="v">${doMes.length}</div><div class="k">faturas</div></div><div class="kpi"><div class="v">${eur0(totLiq)}</div><div class="k">sem IVA</div></div><div class="kpi"><div class="v">${Math.round(totMc).toLocaleString("pt-PT")}</div><div class="k">maços</div></div></div>` +
+    `<div class="fsum">${fs.map(f=>`<div data-f="${esc(f)}" class="${fatForn===f?'on':''}" style="--c:${cor(f)}"><b>${esc(f)}</b>${sf[f].n} fat. · ${eur0(sf[f].liq)}</div>`).join("")}</div>` +
+    `<div class="ftab"><div class="frw h"><span>Data</span><span>Fornecedor · nº</span><span class="n">Maços</span><span class="n">Valor</span></div>` +
+    vis.map(x=>`<div class="frw"><span>${dd(x.d)}</span><span class="fn" style="--c:${cor(x.forn)}">${esc(x.forn)} <small>FCO ${esc(x.ser)}/${esc(x.num)} · lançada ${dd(x.e)} ${x.e.slice(11,16)}${x.st!=="0"?' · estado '+esc(x.st):''}</small></span><span class="n">${x.mc?Math.round(x.mc).toLocaleString("pt-PT"):'—'}</span><span class="n">${eur0(x.liq)}</span></div>`).join("") +
+    `</div><p style="font-size:12px;color:var(--muted);margin:0">Faturas de compra (FCO) dos fornecedores de tabaco lançadas no Sage, pela data do documento. Valores sem IVA. ${FAT.atualizado?'Atualizado '+dd(FAT.atualizado)+' '+FAT.atualizado.slice(11,16)+'.':''} Toca num fornecedor para ver só esse.</p>`;
+}
+$("fatV").onclick = e => {
+  const m = e.target.closest("[data-m]"); if (m) { fatMes = m.dataset.m; fatForn = null; return renderFat(); }
+  const f = e.target.closest("[data-f]"); if (f) { fatForn = fatForn===f.dataset.f ? null : f.dataset.f; return renderFat(); }
+};
 $("ordem").onclick = e => { const b=e.target.closest("button"); if(!b) return; est.ordem=b.dataset.v; gravaEst(); render(); };
 $("base").onclick = e => { const b=e.target.closest("button"); if(!b) return; est.base=b.dataset.v; gravaEst(); render(); };
 $("picos").onclick = e => { const b=e.target.closest("button"); if(!b) return; est.picos=b.dataset.v; gravaEst(); render(); };
@@ -1075,6 +1160,10 @@ $("feita").onclick = () => {
     if (!l.manual && l.novoResto) r[l.id] = l.novoResto;
   }
   est.resto = r; est.restoDe = enc;
+  // o que se pediu a cada fornecedor (para o aviso "encomenda sem fatura")
+  const pf = {}; linhas.filter(l=>l.vol>0).flatMap(divide).forEach(l=>{ const x = (pf[l.forn] ||= {v:0,e:0}); x.v += l.vol; x.e += valor(l); });
+  est.feitaF = est.feitaF || {}; est.feitaF[enc] = pf;
+  for (const k of Object.keys(est.feitaF)) if (k < add(HOJE,-30)) delete est.feitaF[k];
   est.feita = est.feita || {}; est.feita[enc] = new Date().toLocaleTimeString("pt-PT",{hour:"2-digit",minute:"2-digit"});
   gravaEst(); render(); toast("Encomenda marcada como feita ✓");
 };
@@ -1082,6 +1171,7 @@ $("anular").onclick = () => {
   const a = est.antes && est.antes[enc];
   if (a) { est.resto = a.resto || {}; est.restoDe = a.restoDe || null; delete est.antes[enc]; }
   if (est.feita) delete est.feita[enc];
+  if (est.feitaF) delete est.feitaF[enc];
   gravaEst(); render(); toast("Anulado — a encomenda voltou a ficar por fazer");
 };
 $("recomecar").onclick = () => {
@@ -1165,8 +1255,8 @@ async function load(silencioso){
     if (silencioso && DADOS && !novo) return;            // ainda não chegou
     if (!DADOS) { try { await nuvemSync(true); } catch(_){} }
     prepara(d);
-    if (silencioso && novo) toast("Dados atualizados (" + d.atualizado.slice(11,16) + ")");
-    $("setup").style.display="none"; $("app").style.display="flex"; $("bar").style.display="block"; $("err").textContent="";
+    if (silencioso && novo) { toast("Dados atualizados (" + d.atualizado.slice(11,16) + ")"); if ($("app").classList.contains("modoFat")) carregaFat(true); }
+    $("setup").style.display="none"; $("app").style.display="flex"; $("bar").style.display = $("app").classList.contains("modoFat") ? "none" : "block"; $("err").textContent="";
     $("upd").textContent = "dados " + d.atualizado.slice(8,10) + "/" + d.atualizado.slice(5,7) + " " + d.atualizado.slice(11,16);
     render();
   } catch(e) {
