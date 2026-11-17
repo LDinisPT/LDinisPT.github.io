@@ -284,7 +284,8 @@ footer{display:flex;justify-content:center;margin-top:4px}
 </div>
 <div class="tp" data-t="s" hidden>
   <section class="card"><h2 id="sAt">Stock a acabar</h2><div class="note" id="sAn" style="margin:-4px 0 6px"></div><ul class="lst" id="sA"></ul></section>
-  <section class="card"><h2>Artigos parados (sem vendas há 90 dias)</h2><div id="sPr"></div><ul class="lst" id="sP"></ul><div class="note" id="sPn"></div></section>
+  <section class="card"><h2 id="sNt">Stock errado no Sage</h2><div class="note" style="margin:-4px 0 6px">Artigos que se vendem mas têm stock negativo no Sage: as compras não estão a entrar no stock (ou entram noutro código). Enquanto não forem acertados, o "a acabar" não os consegue avisar.</div><ul class="lst" id="sN"></ul></section>
+  <section class="card"><h2>Artigos parados (sem vendas há 90 dias)</h2><div class="note" style="margin:-4px 0 6px">Sem tabaco, revistas e jornais.</div><div id="sPr"></div><ul class="lst" id="sP"></ul><div class="note" id="sPn"></div></section>
 </div>
 
   <div class="err" id="err"></div>
@@ -694,10 +695,12 @@ async function loadStock() {
 }
 function renderStock() {
   const S = window._stock; if (!S) return;
-  const A = arr(S.acabar), P = arr(S.parados);
+  const todos = arr(S.acabar), A = todos.filter(x => x.stock > 0), NEG = todos.filter(x => x.stock < 0), P = arr(S.parados);
   const n1 = x => String(x).replace(".", ",");
   $("sAt").textContent = `Stock a acabar (${A.length})`;
   $("sAn").textContent = `Artigos que, ao ritmo das últimas 4 semanas, só têm stock para menos de ${S.regra_dias || 7} dias. Atualizado às ${String(S.atualizado || "").slice(11, 16)}.`;
+  $("sNt").textContent = `Stock errado no Sage (${NEG.length}${NEG.length >= 50 ? "+" : ""})`;
+  $("sN").innerHTML = NEG.map(x => `<li style="grid-template-columns:1fr auto"><span class="a">${esc(x.artigo)} <small>· ${esc(x.familia || "")} · vende ~${n1(x.por_dia)}/dia</small></span><span class="t neg">${n1(x.stock)}</span></li>`).join("");
   $("sA").innerHTML = A.length ? A.map(x => {
     const cor = x.dias <= 0 ? "neg" : (x.dias < 3 ? "neg" : "");
     const txt = x.dias <= 0 ? "esgotado" : `${n1(x.dias)} dias`;
