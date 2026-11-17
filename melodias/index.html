@@ -283,7 +283,8 @@ footer{display:flex;justify-content:center;margin-top:4px}
   <section class="card"><h2>Últimos fechos</h2><ul class="lst" id="fL"></ul><div class="note" id="fNota"></div></section>
 </div>
 <div class="tp" data-t="s" hidden>
-  <section class="card"><h2>Stock</h2><div class="note">Em preparação: stock a acabar e artigos parados.</div></section>
+  <section class="card"><h2 id="sAt">Stock a acabar</h2><div class="note" id="sAn" style="margin:-4px 0 6px"></div><ul class="lst" id="sA"></ul></section>
+  <section class="card"><h2>Artigos parados (sem vendas há 90 dias)</h2><div id="sPr"></div><ul class="lst" id="sP"></ul><div class="note" id="sPn"></div></section>
 </div>
 
   <div class="err" id="err"></div>
@@ -342,6 +343,7 @@ async function load() {
     $("err").textContent = "";
     render(data);
     if (!window._fechos) loadFechos();
+    loadStock();
   } catch (e) {
     $("err").textContent = "Sem ligação. A mostrar os últimos dados. (" + e.message + ")";
   }
@@ -676,6 +678,35 @@ const TX_RASP = 0.10, TX_JOGOS = 0.054, CUSTOS_MES = 13430, SERV_MES = 1204;
 function sinal(v) { return (v >= 0 ? "+" : "−") + eur0.format(Math.abs(v)); }
 function clsV(v) { return v >= 0 ? "pos" : "neg"; }
 function dataPt(iso) { const [y, m, dd] = iso.split("-"); return new Date(+y, m - 1, +dd).toLocaleDateString("pt-PT", { weekday: "short", day: "2-digit", month: "2-digit" }); }
+
+// ---- Stock (stock.json, gerado no PC da loja de 30 em 30 min) ----
+let _stockTs = 0;
+async function loadStock() {
+  if (Date.now() - _stockTs < 4 * 60 * 1000) return;
+  const tok = getTok(); if (!tok) return;
+  try {
+    const r = await fetch(`https://api.github.com/repos/${REPO}/contents/stock.json?t=${Date.now()}`, { headers: { Authorization: `Bearer ${tok}`, Accept: "application/vnd.github.raw+json" }, cache: "no-store" });
+    if (!r.ok) { if (r.status === 404) $("sAn").textContent = "A preparar os dados no PC da loja… volta daqui a uns minutos."; return; }
+    _stockTs = Date.now();
+    window._stock = await r.json();
+    renderStock();
+  } catch (e) {}
+}
+function renderStock() {
+  const S = window._stock; if (!S) return;
+  const A = arr(S.acabar), P = arr(S.parados);
+  const n1 = x => String(x).replace(".", ",");
+  $("sAt").textContent = `Stock a acabar (${A.length})`;
+  $("sAn").textContent = `Artigos que, ao ritmo das últimas 4 semanas, só têm stock para menos de ${S.regra_dias || 7} dias. Atualizado às ${String(S.atualizado || "").slice(11, 16)}.`;
+  $("sA").innerHTML = A.length ? A.map(x => {
+    const cor = x.dias <= 0 ? "neg" : (x.dias < 3 ? "neg" : "");
+    const txt = x.dias <= 0 ? "esgotado" : `${n1(x.dias)} dias`;
+    return `<li style="grid-template-columns:1fr auto"><span class="a">${esc(x.artigo)} <small>· ${x.tab ? "tabaco · " : ""}stock ${n1(x.stock)} · vende ~${n1(x.por_dia)}/dia</small></span><span class="t ${cor}">${txt}</span></li>`;
+  }).join("") : '<li style="grid-template-columns:1fr"><span class="a">Nada a acabar ✓</span></li>';
+  $("sPr").innerHTML = `<div class="ln"><span>Dinheiro empatado<small>${S.parados_total || 0} artigos (não tabaco), pelo custo da última compra</small></span><b>${eur0.format(S.parados_valor || 0)}</b></div>`;
+  $("sP").innerHTML = P.map(x => `<li style="grid-template-columns:1fr auto"><span class="a">${esc(x.artigo)} <small>· ${esc(x.familia || "")} · ${n1(x.qtd)} un. · ${x.ult ? "última venda " + x.ult.split("-").reverse().join("/") : "nunca vendido"}</small></span><span class="t">${eur0.format(x.valor)}</span></li>`).join("");
+  $("sPn").textContent = (S.parados_total || 0) > P.length ? `Mostra os ${P.length} com mais valor parado.` : "";
+}
 async function loadFechos() {
   const tok = getTok(); if (!tok) return;
   try {
