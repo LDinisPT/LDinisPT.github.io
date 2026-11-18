@@ -105,7 +105,7 @@ header{display:flex;flex-wrap:nowrap;align-items:flex-start;justify-content:spac
 .frw .fn{border-left:3px solid var(--c);padding-left:8px}
 .fwarn{background:rgba(186,117,23,.14);border-left:4px solid #BA7517;border-radius:8px;padding:8px 10px;font-size:13.5px}
 .add input{width:100%;padding:11px;border-radius:10px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font:15px var(--body)}
-.res{margin-top:6px;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--paper)}
+.res{margin-top:6px;border-radius:10px;overflow-y:auto;overscroll-behavior:contain;max-height:min(60vh,520px);border:1px solid var(--line);background:var(--paper)}
 .res:empty{display:none}
 .res div{padding:9px 12px;border-top:1px solid var(--line);cursor:pointer;font-size:14px}
 .res div:first-child{border-top:0}
