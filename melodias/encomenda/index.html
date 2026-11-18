@@ -219,6 +219,9 @@ details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
 .fl2 .q{flex-shrink:0}
 .fl2 .q .pm{width:38px;height:38px;border-radius:9px;border:1px solid var(--line);background:var(--soft);color:var(--ink);font-size:20px;line-height:1;cursor:pointer;padding:0}
 .fl2 .q b{min-width:36px;text-align:center;font:600 20px var(--mono)}
+.fl2.so{opacity:.7}
+.maisF{display:block;width:100%;text-align:left;margin-top:6px;padding:10px 8px;border:1px dashed var(--line);border-radius:10px;background:transparent;color:var(--accent);font:600 14px var(--body);cursor:pointer}
+.maisF small{color:var(--muted);font-weight:400}
 .fl2 .tudo{margin-top:5px;padding:3px 9px;font-size:12px;font-weight:600}
 .fl2.on{background:color-mix(in srgb, var(--accent) 10%, transparent);border-radius:8px;padding-left:6px;padding-right:6px}
 .fl2.on .q b{color:var(--accent)}
@@ -348,7 +351,7 @@ details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
   <b style="font-size:16px" id="forTit">Fornecedores</b>
   <p style="font-size:13px;color:var(--muted);margin:4px 0 10px" id="forSub"></p>
   <div id="forLista"></div>
-  <div class="revl" style="align-items:center"><span>Juntar outro fornecedor</span>
+  <div class="revl" style="align-items:center;display:none"><span>Juntar outro fornecedor</span>
     <span style="display:flex;gap:6px"><select id="forOutro" style="padding:6px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:14px var(--body)"></select> <button class="btn" id="forAdd">Juntar</button></span></div>
   <div class="revl" style="font-weight:600"><span>Total</span><span id="forTot"></span></div>
   <div style="display:flex;gap:8px;justify-content:space-between;margin-top:12px;flex-wrap:wrap">
@@ -932,27 +935,26 @@ function abreFornecedores(id, op){
   forEd = {op, id, sug:l.sug, adj0:l.adj, V:l.V, dist, custos:Object.fromEntries(a.forns.map(f=>[f[0],f[1]])), best:a.forns[0]?a.forns[0][1]:null};
   $("forTit").textContent = a.artigo;
   $("forAuto").style.display = op.novo ? "none" : "";
-  $("forSub").textContent = op.novo ? "Artigo novo — escolhe o fornecedor e quantos volumes." : `Sugestão: ${l.sug} vol (volume de ${l.V} ${l.V>1?'maços':'un.'}). Usa o − / + de cada fornecedor, ou "Pôr tudo aqui".`;
+  $("forSub").textContent = op.novo ? "Artigo novo — escolhe o fornecedor e quantos volumes." : `Sugestão: ${l.sug} vol de ${l.V} ${l.V>1?'maços':'un.'} · quantos volumes a cada fornecedor?`;
   desenhaFor();
   $("forM").style.display = "flex";
 }
 function desenhaFor(){
   const e = forEd, tot = Object.values(e.dist).reduce((s,v)=>s+v,0);
-  $("forLista").innerHTML = Object.keys(e.dist).sort((x,y)=>(e.custos[x]??99)-(e.custos[y]??99)).map(f=>{
-    const c = e.custos[f];
-    const info = (c==null ? "sem preço" : (eur(c,3) + "/maço" + (e.best!=null && c-e.best>=0.001 ? " · +" + ((c-e.best)*100).toFixed(1).replace(".",",") + " cênt." : " · mais barato")))
-      + (SEMANAL[f] !== undefined && dow(enc) !== SEMANAL[f] ? " · só entrega ao domingo" : "");
-    return `<div class="fl2 ${e.dist[f]>0?'on':''}"><div class="nm" style="border-left:4px solid ${cor(f)};padding-left:8px">${esc(f)}<small>${info}</small>
-        <button class="btn tudo" data-tudo="${esc(f)}">Pôr tudo aqui</button></div>
+  const ks = Object.keys(e.dist).sort((x,y)=>(e.custos[x]??99)-(e.custos[y]??99));
+  const vis = ks.filter(f => e.custos[f]!=null || e.dist[f]>0 || e.mostra);
+  const escond = ks.filter(f => !vis.includes(f));
+  $("forLista").innerHTML = vis.map(f=>{
+    const c = e.custos[f], so = SEMANAL[f] !== undefined && dow(enc) !== SEMANAL[f];
+    const info = c==null ? "sem preço" : (e.best!=null && c-e.best>=0.001 ? "+" + ((c-e.best)*100).toFixed(1).replace(".",",") + " cênt. por maço" : "mais barato hoje");
+    return `<div class="fl2 ${e.dist[f]>0?'on':''} ${so?'so':''}"><div class="nm" style="border-left:4px solid ${cor(f)};padding-left:8px">${esc(f)}<small>${info}${so?' · só ao domingo':''}</small></div>
       <div class="q"><button class="pm" data-f="${esc(f)}" data-d="-1" aria-label="menos">−</button><b>${e.dist[f]}</b><button class="pm" data-f="${esc(f)}" data-d="1" aria-label="mais">+</button></div></div>`;
-  }).join("");
-  const fora = FORNS_LISTA.filter(f=>!(f in e.dist));
-  $("forOutro").innerHTML = fora.map(f=>`<option>${f}</option>`).join("");
-  $("forOutro").parentElement.parentElement.style.display = fora.length ? "" : "none";
-  $("forTot").innerHTML = `<b>${tot}</b> vol` + (tot!==e.sug+e.adj0 ? ` <small style="color:var(--warn)">(antes ${Math.max(0,e.sug+e.adj0)})</small>` : "");
+  }).join("") + (escond.length ? `<button class="maisF" id="maisF">+ Outro fornecedor <small>(${escond.map(esc).join(", ")})</small></button>` : "");
+  $("forTot").innerHTML = `<b>${tot}</b> vol` + (tot!==e.sug+e.adj0 ? ` <small style="color:var(--warn)">(sugestão ${Math.max(0,e.sug+e.adj0)})</small>` : "");
 }
 $("forLista").onclick = ev => {
   const e = forEd; if (!e) return;
+  if (ev.target.closest("#maisF")) { e.mostra = true; return desenhaFor(); }
   const t = ev.target.closest("button[data-tudo]");
   const un = s => s.replace(/&amp;/g,"&");
   if (t) { const tot = Object.values(e.dist).reduce((s,v)=>s+v,0); for (const k in e.dist) e.dist[k] = 0; e.dist[un(t.dataset.tudo)] = tot; return desenhaFor(); }
