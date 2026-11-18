@@ -128,6 +128,9 @@ header{display:flex;flex-wrap:nowrap;align-items:flex-start;justify-content:spac
 .fhead small{color:var(--muted);font-family:var(--mono);font-size:12.5px}
 .fhead .pdf{margin-left:auto;margin-right:8px;padding:5px 9px;font-size:12px}
 .fhead{gap:8px}
+/* ao descer a lista: "Falta alguma coisa?" e o nome do fornecedor ficam fixos em cima */
+.fixo{position:sticky;top:0;z-index:30;background:var(--bg);padding:6px 0 8px;margin:0 -2px;padding-left:2px;padding-right:2px}
+.fhead{position:sticky;top:var(--fixoH,64px);z-index:20;background:var(--bg);padding-top:8px;padding-bottom:8px;margin-top:2px}
 .item{background:var(--paper);border:1px solid var(--line);border-left:4px solid var(--c);border-radius:12px;padding:10px 10px 10px 12px}
 .row1{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .nome{font-weight:600;font-size:15px}
@@ -311,10 +314,12 @@ details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
   <div class="fgrid" id="forns"></div>
 
   <div id="picosBox"></div>
+  <div class="fixo" id="fixo">
   <div class="lbl">Falta alguma coisa?</div>
   <div class="add">
     <input id="procura" type="search" placeholder="🔍 Procurar artigo ou passar o código de barras…" autocomplete="off">
     <div class="res" id="res"></div>
+  </div>
   </div>
 
   <div class="ordem">
@@ -822,6 +827,8 @@ function toast(t){ const e=$("toast"); e.textContent=t; e.classList.add("show");
 
 // ---------- eventos ----------
 $("encomenda").onclick = e => { const b=e.target.closest("button"); if(!b) return; enc=b.dataset.v; fornSel=null; modoFat(false); render(); };
+{ const ajusta = () => document.documentElement.style.setProperty("--fixoH", $("fixo").offsetHeight + "px");
+  ajusta(); try { new ResizeObserver(ajusta).observe($("fixo")); } catch(e){ addEventListener("resize", ajusta); } }
 $("fatBtn").onclick = () => modoFat(!$("app").classList.contains("modoFat"));
 // ---------- faturas de compra (FCO) ----------
 let FAT = null, fatMes = null, fatForn = null, fatAt = 0;
