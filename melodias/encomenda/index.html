@@ -673,8 +673,19 @@ function divide(l){
   return out.length ? out : [l];
 }
 const TRES = ["Mid Sid","Valente & Neto","Bel"];
-// quanto custa a mais repartir, em relação a pedir tudo ao mais barato (só a repartição automática)
-const custoRepartir = div => div.reduce((t,l) => t + ((l.repar || l.urg || l.escolhido || l.manual || !l.forns || !l.forns[0] || l.custo==null) ? 0 : l.vol*(l.V||1)*(l.custo - l.forns[0][1])), 0);
+// quanto custa a mais, em relação a pedir tudo ao mais barato: {auto: repartição automática, mao: escolhas à mão, semPreco: linhas sem preço (não contam)}
+function custoVsBarato(div){
+  const r = {auto:0, mao:0, semPreco:0, porForn:{}};
+  for (const l of div) {
+    if (!l.forns || !l.forns[0] || l.forns[0][1] == null) continue;
+    if (l.custo == null) { r.semPreco++; continue; }
+    const x = l.vol*(l.V||1)*(l.custo - l.forns[0][1]); if (Math.abs(x) < 1e-9) continue;
+    if (l.repar || l.escolhido || l.urg || l.manual) r.mao += x; else r.auto += x;
+    r.porForn[l.forn] = (r.porForn[l.forn]||0) + x;
+  }
+  return r;
+}
+const custoRepartir = div => custoVsBarato(div).auto;
 const valor = l => l.vol * (l.V||1) * (l.custo ?? (l.pvp ? l.pvp*0.93 : 0));
 const ordena = arr => est.ordem==="alfa" ? arr.sort((a,b)=>a.artigo.localeCompare(b.artigo,"pt")) : arr.sort((a,b)=>b.b-a.b || a.artigo.localeCompare(b.artigo,"pt"));
 function alt(l){
@@ -740,8 +751,14 @@ function render(){
       : `<div class="aviso">A <b>EuroNovidades</b> é só ao domingo: para ela, esta encomenda repõe a semana inteira (de domingo a domingo, às ${CORTE||19}h).</div>`);
 
   const linhas = artsEnc().map(calcula);
-  const extraRep = custoRepartir(linhas.filter(l=>l.vol>0).flatMap(divide));
-  if (est.repartir !== "barato" && extraRep >= 0.5) $("aviso").innerHTML += `<div class="aviso">⚖️ <b>Repartido pelos fornecedores</b> (${est.repartir==="igual"?"dividir por 3":"mais ao mais barato"}): custa <b>+${eur0(extraRep)}</b> nesta encomenda em relação a pedir tudo ao mais barato.</div>`;
+  const cvb = custoVsBarato(linhas.filter(l=>l.vol>0).flatMap(divide)), cTot = cvb.auto + cvb.mao;
+  if (cTot >= 0.5 || cvb.semPreco) {
+    const partes = [];
+    if (cvb.auto >= 0.5) partes.push(`repartição automática (${est.repartir==="igual"?"dividir por 3":est.repartir==="pref"?"mais ao mais barato":"empates"}) +${eur0(cvb.auto)}`);
+    if (Math.abs(cvb.mao) >= 0.5) partes.push(`mudanças à mão ${cvb.mao>=0?'+':'−'}${eur0(Math.abs(cvb.mao))}`);
+    const pf = Object.entries(cvb.porForn).filter(([f,v])=>v>=0.5).sort((x,y)=>y[1]-x[1]).map(([f,v])=>`${esc(f)} +${eur0(v)}`).join(" · ");
+    $("aviso").innerHTML += `<div class="aviso">⚖️ <b>Em relação a pedir tudo ao mais barato</b>, esta encomenda custa <b>+${eur0(Math.max(0,cTot))}</b>${partes.length?` (${partes.join("; ")})`:""}.${pf?`<br><small>Onde fica mais caro: ${pf}.</small>`:""}${cvb.semPreco?`<br><small>${cvb.semPreco} linha${cvb.semPreco===1?'':'s'} num fornecedor sem preço não ${cvb.semPreco===1?'entra':'entram'} na conta.</small>`:""}</div>`;
+  }
   const nCorta = linhas.filter(l=>l.stk&&l.stk.corta), nRever = linhas.filter(l=>l.stk&&l.stk.rever&&l.w.some(x=>x>0)).length;
   if (nCorta.length || nRever) $("aviso").innerHTML += `<div class="aviso">📦 <b>Stock do Sage</b>: ${est.stock==="off" ? "não está a ser usado (Opções)." : `${nCorta.length} artigo${nCorta.length===1?'':'s'} pede${nCorta.length===1?'':'m'} menos porque há stock (−${nCorta.reduce((t,l)=>t+l.stk.sugV-l.sug,0)} vol, margem ${est.margem} dia${est.margem===1?'':'s'}).`} ${nRever} com stock negativo — não conta, fica pelas vendas.</div>`;
   famUI();
