@@ -572,7 +572,8 @@ function calcula(a){
     if (S < 0) stk.rever = true;
     else if (S > 0 && est.stock !== "off") {
       const r = (parcial ? media : b) / jw.length;            // maços por dia
-      if (r > 0) {
+      {                                                       // r = 0 (nada vendido): qualquer stock chega
+
         const fimEnc = new Date(enc + "T00:00:00").getTime() + (CORTE||19)*36e5;
         const at = new Date(String(DADOS.atualizado).replace(" ","T")).getTime();
         const faltaD = isNaN(at) ? 0 : Math.max(0, (fimEnc - at)/864e5);
