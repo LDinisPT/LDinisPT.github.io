@@ -128,6 +128,27 @@ header{display:flex;flex-wrap:nowrap;align-items:flex-start;justify-content:spac
 .fhead small{color:var(--muted);font-family:var(--mono);font-size:12.5px}
 .fhead .pdf{margin-left:auto;margin-right:8px;padding:5px 9px;font-size:12px}
 .fhead{gap:8px}
+.arvT{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:13px;margin:4px 0}
+.arvT .btn{padding:5px 10px;font-size:12px}
+.arvM{background:var(--paper);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.arvM.mud{border-color:var(--warn)}
+.arvH{display:flex;align-items:center;gap:8px;padding:11px 12px;cursor:pointer;user-select:none}
+.arvH b{font-size:15.5px}.arvH small{color:var(--muted);font-size:12px}
+.arvS{color:var(--muted);width:12px}
+.arvD{width:9px;height:9px;border-radius:50%;background:var(--c);display:inline-block}
+.arvV{margin-left:auto;font:600 14px var(--mono);color:var(--accent)}
+.arvR{margin:0 12px 10px 18px;border-left:1.5px solid var(--line)}
+.item.arvA{background:transparent;border:0;border-radius:0;box-shadow:none;padding:7px 0 7px 14px;position:relative}
+.item.arvA:before{content:"";position:absolute;left:0;top:19px;width:10px;border-top:1.5px solid var(--line)}
+.item.arvA.mud .arvN{color:var(--warn)}
+.arvN{font-weight:600;font-size:14px;margin-bottom:6px}.arvN small{font-weight:400;color:var(--muted)}
+.arvB{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.arvF{display:inline-flex;align-items:center;gap:4px;padding:2px 3px 2px 10px;border-radius:999px;border:1.5px solid var(--c);background:var(--soft);font-size:13px}
+.arvF i{width:8px;height:8px;border-radius:50%;background:var(--c);margin-right:2px}
+.arvF b{min-width:18px;text-align:center;font:600 14px var(--mono)}
+.arvF button{width:28px;height:28px;border-radius:999px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-size:15px;line-height:1;cursor:pointer;padding:0}
+.arvAdd{border:1px dashed var(--line);background:transparent;color:var(--accent);border-radius:999px;padding:5px 12px;font:600 12.5px var(--body);cursor:pointer}
+.arvSel{padding:5px;border-radius:8px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font:13px var(--body)}
 /* ao descer a lista: "Falta alguma coisa?" e o nome do fornecedor ficam fixos em cima */
 .fixo{position:sticky;top:0;z-index:30;background:var(--bg);padding:6px 0 8px;margin:0 -2px;padding-left:2px;padding-right:2px}
 .fhead{position:sticky;top:var(--fixoH,64px);z-index:20;background:var(--bg);padding-top:8px;padding-bottom:8px;margin-top:2px}
@@ -324,7 +345,7 @@ details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
 
   <div class="ordem">
     <div class="lbl" style="margin:0">Lista</div>
-    <div class="seg" id="ordem"><button data-v="alfa" class="on">A–Z</button><button data-v="vendas">Mais vendidos</button></div>
+    <div class="seg" id="ordem"><button data-v="alfa" class="on">A–Z</button><button data-v="vendas">Mais vendidos</button><button data-v="arvore">🌳 Árvore</button></div>
   </div>
 
   <div id="alterados"></div>
@@ -687,6 +708,54 @@ function custoVsBarato(div){
 }
 const custoRepartir = div => custoVsBarato(div).auto;
 const valor = l => l.vol * (l.V||1) * (l.custo ?? (l.pvp ? l.pvp*0.93 : 0));
+// ---------- vista em árvore: marca → artigo → um ramo por fornecedor ----------
+const arvAbertas = new Set(); let arvAdd = null;
+const marcaDe = n => { const w = n.replace(/^L\s*&\s*M\b/i,"L&M").split(/\s+/)[0]; return ({Lucky:"Lucky Strike"})[w] || w; };
+function arvoreHTML(pedir, so){
+  const porId = {};
+  for (const l of pedir) (porId[l.id] ||= {l, r:{}}).r[l.forn] = (porId[l.id].r[l.forn]||0) + l.vol;
+  let arts = Object.values(porId); arts.forEach(x => x.t = Object.values(x.r).reduce((a,b)=>a+b,0));
+  if (so) arts = arts.filter(x => x.r[so]);
+  const porM = {};
+  for (const x of arts) (porM[marcaDe(x.l.artigo)] ||= []).push(x);
+  const marcas = Object.keys(porM).sort((a,b)=> a.localeCompare(b,"pt"));   // marcas por ordem alfabética
+  if (!marcas.length) return "";
+  const p = pedAtual();
+  let h = `<div class="arvT"><span>${marcas.length} marcas · ${arts.length} artigos</span><button class="btn" id="arvTudo">${arvAbertas.size>=marcas.length?'Fechar tudo':'Abrir tudo'}</button></div>`;
+  for (const m of marcas) {
+    const xs = porM[m].sort((a,b)=>a.l.artigo.localeCompare(b.l.artigo,"pt")), t = xs.reduce((s,x)=>s+x.t,0);
+    const fs = [...new Set(xs.flatMap(x=>Object.keys(x.r)))];
+    const ab = arvAbertas.has(m), mud = xs.some(x => p.aj[x.l.id] || p.rep[x.l.id]);
+    h += `<div class="arvM ${mud?'mud':''}"><div class="arvH" data-marca="${esc(m)}"><span class="arvS">${ab?'▾':'▸'}</span><b>${esc(m)}</b><small>${xs.length} art.</small>${fs.map(f=>`<i class="arvD" style="--c:${cor(f)}" title="${esc(f)}"></i>`).join("")}<span class="arvV">${t} vol</span></div>`;
+    if (ab) {
+      h += `<div class="arvR">`;
+      for (const x of xs) {
+        const id = x.l.id, mx = p.aj[id] || p.rep[id];
+        const fora = FORNS_LISTA.filter(f => f !== "Rangel" && !(f in x.r));
+        h += `<div class="item arvA ${mx?'mud':''}" data-id="${esc(id)}"><div class="arvN">${esc(x.l.artigo)} <small>${x.t} vol${mx?' · alterado à mão':''}</small></div><div class="arvB">` +
+          Object.entries(x.r).map(([f,v])=>`<span class="arvF" style="--c:${cor(f)}"><i></i>${esc(f)} <button data-av="${esc(id)}" data-af="${esc(f)}" data-ad="-1" aria-label="menos">−</button><b>${v}</b><button data-av="${esc(id)}" data-af="${esc(f)}" data-ad="1" aria-label="mais">+</button></span>`).join("") +
+          (arvAdd === id ? `<select class="arvSel" data-asel="${esc(id)}"><option value="">escolher fornecedor…</option>${fora.map(f=>`<option>${esc(f)}</option>`).join("")}</select>`
+                         : (fora.length ? `<button class="arvAdd" data-aadd="${esc(id)}">+ fornecedor</button>` : "")) +
+          `</div></div>`;
+      }
+      h += `</div>`;
+    }
+    h += `</div>`;
+  }
+  return h;
+}
+// muda os volumes de um artigo por fornecedor (o mesmo que a janela do duplo clique)
+function poeDist(id, dist){
+  const p = pedAtual(), usados = Object.entries(dist).filter(([f,v])=>v>0);
+  delete p.forn[id]; delete p.urg[id];
+  if (usados.length) p.rep[id] = Object.fromEntries(usados); else delete p.rep[id];
+  delete p.aj[id];
+  const a = ART.find(x=>x.id===id); const s2 = a ? calcula(a).sug : 0;
+  const tot = usados.reduce((t,x)=>t+x[1],0); p.aj[id] = tot - s2; if (!p.aj[id]) delete p.aj[id];
+  gravaEst(); render();
+}
+function distAtual(id){ const a = ART.find(x=>x.id===id); const d = {}; if (!a) return d; const l = calcula(a); if (l.vol>0) for (const x of divide(l)) d[x.forn] = (d[x.forn]||0) + x.vol; return d; }
+const unA = s => String(s).replace(/&amp;/g,"&");
 const ordena = arr => est.ordem==="alfa" ? arr.sort((a,b)=>a.artigo.localeCompare(b.artigo,"pt")) : arr.sort((a,b)=>b.b-a.b || a.artigo.localeCompare(b.artigo,"pt"));
 function alt(l){
   if (l.custo==null || l.forns.length<2) return "";
@@ -797,7 +866,8 @@ function render(){
   const porF = {}; vis.forEach(l => (porF[l.forn] ||= []).push(l));
   const mostrar = fornSel ? [fornSel] : Object.keys(porF).sort((a,b)=>(stats[b]?.eur||0)-(stats[a]?.eur||0));
   let html = "";
-  for (const f of mostrar){
+  if (est.ordem === "arvore") html = arvoreHTML(vis, fornSel);
+  else for (const f of mostrar){
     const itens = ordena(porF[f]||[]); if (!itens.length) continue;
     const s = stats[f] || {vol:0,eur:0};
     html += `<div class="fhead" style="--c:${cor(f)}"><h2>${f}</h2><button class="btn pdf" data-pdf="${esc(f)}">📄 PDF</button><small>${s.vol} vol · ≈ ${eur0(s.eur)}</small></div>`;
@@ -846,6 +916,19 @@ function toast(t){ const e=$("toast"); e.textContent=t; e.classList.add("show");
 $("encomenda").onclick = e => { const b=e.target.closest("button"); if(!b) return; enc=b.dataset.v; fornSel=null; modoFat(false); render(); };
 { const ajusta = () => document.documentElement.style.setProperty("--fixoH", $("fixo").offsetHeight + "px");
   ajusta(); try { new ResizeObserver(ajusta).observe($("fixo")); } catch(e){ addEventListener("resize", ajusta); } }
+$("lista").addEventListener("click", ev => {
+  if (ev.target.closest("#arvTudo")) { const ms = [...document.querySelectorAll("#lista .arvH")].map(x=>unA(x.dataset.marca)); const fechar = arvAbertas.size >= ms.length; arvAbertas.clear(); if (!fechar) ms.forEach(m=>arvAbertas.add(m)); return render(); }
+  const hm = ev.target.closest(".arvH"); if (hm) { const m = unA(hm.dataset.marca); arvAbertas.has(m) ? arvAbertas.delete(m) : arvAbertas.add(m); return render(); }
+  const b = ev.target.closest("button[data-av]");
+  if (b) { const id = unA(b.dataset.av), f = unA(b.dataset.af), d = distAtual(id); d[f] = Math.max(0, (d[f]||0) + (+b.dataset.ad)); return poeDist(id, d); }
+  const ad = ev.target.closest("button[data-aadd]"); if (ad) { arvAdd = unA(ad.dataset.aadd); return render(); }
+});
+$("lista").addEventListener("change", ev => {
+  const s = ev.target.closest("select[data-asel]"); if (!s) return;
+  const id = unA(s.dataset.asel); arvAdd = null;
+  if (s.value) { const d = distAtual(id); d[s.value] = (d[s.value]||0) + 1; return poeDist(id, d); }
+  render();
+});
 $("fatBtn").onclick = () => modoFat(!$("app").classList.contains("modoFat"));
 // ---------- faturas de compra (FCO) ----------
 let FAT = null, fatMes = null, fatForn = null, fatAt = 0;
