@@ -142,6 +142,12 @@ footer{display:flex;justify-content:center;margin-top:4px}
 .ln b{font-family:var(--mono);white-space:nowrap;font-variant-numeric:tabular-nums}
 .ln small{display:block;color:var(--muted);font-size:11.5px}
 .split{display:flex;height:12px;border-radius:6px;overflow:hidden;margin:2px 0 8px;background:var(--soft)}
+
+.hdr-col{display:flex;flex-direction:column;align-items:flex-end;gap:10px;flex-shrink:0}
+.hdate{display:flex;align-items:center;gap:10px;justify-content:flex-end}
+.hd-n{font:700 34px/1 var(--display);color:var(--accent)}
+.hd-w{font:600 11px var(--body);letter-spacing:.12em;text-transform:uppercase;color:var(--accent);line-height:1.15}
+.hd-m{font:500 12px var(--body);color:var(--muted);line-height:1.15}
 </style>
 </head>
 <body>
@@ -153,9 +159,12 @@ footer{display:flex;justify-content:center;margin-top:4px}
     <h1>Vendas</h1>
     <span class="co">C.C. E.Leclerc, Loja 4 · Figueira da Foz</span>
   </div>
+  <div class="hdr-col">
   <div class="hdr-r">
     <button class="btn" id="refresh">↻ <span id="upd">atualizar</span></button>
     <button class="btn theme" id="theme">Tema</button>
+  </div>
+    <div class="hdate"><div class="hd-n" id="hdN"></div><div><div class="hd-w" id="hdW"></div><div class="hd-m" id="hdM"></div></div></div>
   </div>
 </header>
 
@@ -678,6 +687,16 @@ $("reset").onclick = () => { delTok(); showSetup(); };
 $("refresh").onclick = () => { $("upd").textContent = "a atualizar…"; load(); };
 
 load();
+
+function poeData() {
+  const d = new Date();
+  const w = d.toLocaleDateString("pt-PT", { weekday: "long" });
+  const m = d.toLocaleDateString("pt-PT", { month: "long" });
+  $("hdN").textContent = d.getDate();
+  $("hdW").textContent = w;
+  $("hdM").textContent = m.charAt(0).toUpperCase() + m.slice(1) + " " + d.getFullYear();
+}
+poeData(); setInterval(poeData, 60000);
 setInterval(load, 60000);
 setInterval(tickStatus, 1000);
 
