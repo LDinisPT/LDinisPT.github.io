@@ -554,6 +554,9 @@ function calcula(a){
   const esc_ = p.forn && p.forn[a.id];
   if (esc_ && !urg) { const x = a.forns.find(f=>f[0]===esc_); forn = esc_; custo = x ? x[1] : null; }
   if (urg) { const bel = a.forns.find(f=>f[0]==="Bel"); forn = "Bel"; if (bel) custo = bel[1]; }
+  // repartido à mão: o fornecedor principal é o que leva mais volumes (assim a regra "EuroNovidades só ao domingo" não apaga uma escolha feita à mão)
+  const rp = p.rep && p.rep[a.id];
+  if (rp && !esc_ && !urg) { const top = Object.entries(rp).filter(x=>x[1]>0).sort((x,y)=>y[1]-x[1])[0]; if (top) { forn = top[0]; const x = a.forns.find(f=>f[0]===forn); custo = x ? x[1] : null; } }
   const sem = SEMANAL[forn];
   const foraDia = sem !== undefined && dow(enc) !== sem;      // ex.: EuroNovidades numa encomenda de quarta
   const nd = sem !== undefined ? 7 : 0;                         // semanal: repõe a semana inteira
@@ -921,7 +924,9 @@ function abreFornecedores(id, op){
   for (const f of a.forns) if (!(f[0] in dist)) dist[f[0]] = 0;
   if (dist["Sem compras recentes"] !== undefined) delete dist["Sem compras recentes"];
   // vindo da procura e ainda sem nada pedido: começa com 1 volume no mais barato (ou no 1.º da lista)
-  if (op.pesquisa && l.vol === 0) { const f = a.forns[0] ? a.forns[0][0] : FORNS_LISTA[0]; dist[f] = 1; }
+  // (o mais barato que entrega nesta encomenda: numa quarta salta a EuroNovidades)
+  const entrega = f => !(SEMANAL[f] !== undefined && dow(enc) !== SEMANAL[f]);
+  if (op.pesquisa && l.vol === 0) { const fo = a.forns.find(x=>entrega(x[0])); const f = fo ? fo[0] : FORNS_LISTA[0]; dist[f] = 1; for (const k of Object.keys(dist)) if (k !== f) dist[k] = 0; }
   forEd = {op, id, sug:l.sug, adj0:l.adj, V:l.V, dist, custos:Object.fromEntries(a.forns.map(f=>[f[0],f[1]])), best:a.forns[0]?a.forns[0][1]:null};
   $("forTit").textContent = a.artigo;
   $("forAuto").style.display = op.novo ? "none" : "";
@@ -933,7 +938,8 @@ function desenhaFor(){
   const e = forEd, tot = Object.values(e.dist).reduce((s,v)=>s+v,0);
   $("forLista").innerHTML = Object.keys(e.dist).sort((x,y)=>(e.custos[x]??99)-(e.custos[y]??99)).map(f=>{
     const c = e.custos[f];
-    const info = c==null ? "sem preço recente" : (eur(c,3) + "/maço" + (e.best!=null && c-e.best>=0.001 ? " · +" + ((c-e.best)*100).toFixed(1).replace(".",",") + " cênt." : " · mais barato"));
+    const info = (c==null ? "sem preço recente" : (eur(c,3) + "/maço" + (e.best!=null && c-e.best>=0.001 ? " · +" + ((c-e.best)*100).toFixed(1).replace(".",",") + " cênt." : " · mais barato")))
+      + (SEMANAL[f] !== undefined && dow(enc) !== SEMANAL[f] ? " · só entrega ao domingo" : "");
     return `<div class="fl2 ${e.dist[f]>0?'on':''}"><div class="nm" style="border-left:4px solid ${cor(f)};padding-left:8px">${esc(f)}<small>${info}</small>
         <button class="btn tudo" data-tudo="${esc(f)}">Pôr tudo aqui</button></div>
       <div class="q"><button class="pm" data-f="${esc(f)}" data-d="-1" aria-label="menos">−</button><b>${e.dist[f]}</b><button class="pm" data-f="${esc(f)}" data-d="1" aria-label="mais">+</button></div></div>`;
@@ -972,7 +978,9 @@ $("forSim").onclick = () => {
   const usados = Object.entries(e.dist).filter(([f,v])=>v>0);
   delete p.forn[e.id]; delete p.urg[e.id];
   if (usados.length) p.rep[e.id] = Object.fromEntries(usados); else delete p.rep[e.id];
-  p.aj[e.id] = tot - e.sug; if (!p.aj[e.id]) delete p.aj[e.id];
+  // a sugestão pode mudar com o fornecedor escolhido (ex.: EuroNovidades repõe a semana) → acerta para ficar o total que se escolheu
+  delete p.aj[e.id];
+  { const a2 = ART.find(x=>x.id===e.id); const s2 = a2 ? calcula(a2).sug : e.sug; p.aj[e.id] = tot - s2; if (!p.aj[e.id]) delete p.aj[e.id]; }
   if (e.op && e.op.novo) {
     if (!tot) { descartaNovo(); $("forM").style.display = "none"; forEd = null; render(); toast("Artigo novo descartado (0 volumes)"); return; }
     const nv = p.novos.find(n=>n.id===e.id); if (nv) nv.forn = usados.sort((x,y)=>y[1]-x[1])[0][0];
