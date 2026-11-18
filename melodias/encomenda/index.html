@@ -822,7 +822,7 @@ function renderFat(){
   if (!FAT) { v.innerHTML = `<div class="aviso">A carregar as faturas…</div>`; return; }
   if (FAT.erro) { v.innerHTML = `<div class="aviso">Não consegui carregar as faturas (${esc(FAT.erro)}).</div>`; return; }
   if (FAT.vazio || !FAT.fat.length) { v.innerHTML = `<div class="aviso">Ainda não há faturas — o PC da loja envia-as de meia em meia hora, com a encomenda.</div>`; return; }
-  const L = FAT.fat.map(x => ({ser:x[0], num:x[1], d:x[2], e:x[3], forn:nomeForn(x[4]), liq:+x[5]||0, tot:+x[6]||0, mc:+x[7]||0, st:String(x[8]??"0")}))
+  const L = FAT.fat.map(x => ({ser:x[0], num:x[1], d:x[2], e:x[3], forn:nomeForn(x[4]), liq:+x[5]||0, tot:+x[6]||0, mc:+x[7]||0, st:String(x[8]??"0"), qt:+x[9]||0}))
     .sort((a,b)=> b.d.localeCompare(a.d) || b.e.localeCompare(a.e));
   const meses = [...new Set(L.map(x=>x.d.slice(0,7)))].sort().reverse();
   if (!fatMes || !meses.includes(fatMes)) fatMes = meses[0];
@@ -849,7 +849,7 @@ function renderFat(){
     `<div class="kpis"><div class="kpi"><div class="v">${doMes.length}</div><div class="k">faturas</div></div><div class="kpi"><div class="v">${eur0(totLiq)}</div><div class="k">sem IVA</div></div><div class="kpi"><div class="v">${Math.round(totMc).toLocaleString("pt-PT")}</div><div class="k">maços</div></div></div>` +
     `<div class="fsum">${fs.map(f=>`<div data-f="${esc(f)}" class="${fatForn===f?'on':''}" style="--c:${cor(f)}"><b>${esc(f)}</b>${sf[f].n} fat. · ${eur0(sf[f].liq)}</div>`).join("")}</div>` +
     `<div class="ftab"><div class="frw h"><span>Data</span><span>Fornecedor · nº</span><span class="n">Maços</span><span class="n">Valor</span></div>` +
-    vis.map(x=>`<div class="frw"><span>${dd(x.d)}</span><span class="fn" style="--c:${cor(x.forn)}">${esc(x.forn)} <small>FCO ${esc(x.ser)}/${esc(x.num)} · lançada ${dd(x.e)} ${x.e.slice(11,16)}${x.st!=="0"?' · estado '+esc(x.st):''}</small></span><span class="n">${x.mc?Math.round(x.mc).toLocaleString("pt-PT"):'—'}</span><span class="n">${eur0(x.liq)}</span></div>`).join("") +
+    vis.map(x=>`<div class="frw"><span>${dd(x.d)}</span><span class="fn" style="--c:${cor(x.forn)}">${esc(x.forn)} <small>FCO ${esc(x.ser)}/${esc(x.num)} · lançada ${dd(x.e)} ${x.e.slice(11,16)}${x.st!=="0"?' · estado '+esc(x.st):''}</small></span><span class="n">${x.mc?Math.round(x.mc).toLocaleString("pt-PT"):(x.qt?Math.round(x.qt).toLocaleString("pt-PT")+' un.':'—')}</span><span class="n">${eur0(x.liq)}</span></div>`).join("") +
     `</div><p style="font-size:12px;color:var(--muted);margin:0">Faturas de compra (FCO) dos fornecedores de tabaco lançadas no Sage, pela data do documento. Valores sem IVA. ${FAT.atualizado?'Atualizado '+dd(FAT.atualizado)+' '+FAT.atualizado.slice(11,16)+'.':''} Toca num fornecedor para ver só esse.</p>`;
 }
 $("fatV").onclick = e => {
