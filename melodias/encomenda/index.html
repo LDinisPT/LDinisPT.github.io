@@ -922,6 +922,8 @@ function abreFornecedores(id, op){
   const dist = {};
   for (const x of partes) dist[x.forn] = (dist[x.forn]||0) + x.vol;
   for (const f of a.forns) if (!(f[0] in dist)) dist[f[0]] = 0;
+  // todos os fornecedores de tabaco vendem todas as marcas (Ana, 18/11): aparecem sempre, mesmo sem preço
+  for (const f of FORNS_LISTA) if (f !== "Rangel" && !(f in dist)) dist[f] = 0;
   if (dist["Sem compras recentes"] !== undefined) delete dist["Sem compras recentes"];
   // vindo da procura e ainda sem nada pedido: começa com 1 volume no mais barato (ou no 1.º da lista)
   // (o mais barato que entrega nesta encomenda: numa quarta salta a EuroNovidades)
@@ -938,7 +940,7 @@ function desenhaFor(){
   const e = forEd, tot = Object.values(e.dist).reduce((s,v)=>s+v,0);
   $("forLista").innerHTML = Object.keys(e.dist).sort((x,y)=>(e.custos[x]??99)-(e.custos[y]??99)).map(f=>{
     const c = e.custos[f];
-    const info = (c==null ? "sem preço recente" : (eur(c,3) + "/maço" + (e.best!=null && c-e.best>=0.001 ? " · +" + ((c-e.best)*100).toFixed(1).replace(".",",") + " cênt." : " · mais barato")))
+    const info = (c==null ? "sem preço" : (eur(c,3) + "/maço" + (e.best!=null && c-e.best>=0.001 ? " · +" + ((c-e.best)*100).toFixed(1).replace(".",",") + " cênt." : " · mais barato")))
       + (SEMANAL[f] !== undefined && dow(enc) !== SEMANAL[f] ? " · só entrega ao domingo" : "");
     return `<div class="fl2 ${e.dist[f]>0?'on':''}"><div class="nm" style="border-left:4px solid ${cor(f)};padding-left:8px">${esc(f)}<small>${info}</small>
         <button class="btn tudo" data-tudo="${esc(f)}">Pôr tudo aqui</button></div>
