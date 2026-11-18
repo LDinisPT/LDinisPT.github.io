@@ -199,7 +199,7 @@ details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
 .bar .tot{flex:1;font-size:12.5px;color:var(--muted);min-width:0}
 .bar .tot b{color:var(--ink);font:600 16px var(--mono)}
 .toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--ink);color:var(--paper);
-  padding:8px 14px;border-radius:10px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:9}
+  padding:8px 14px;border-radius:10px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;z-index:110}
 .toast.show{opacity:1}
 .err{color:var(--bad);font-size:13px}
 #setup p{color:var(--muted);font-size:14px;margin:0 0 10px}
@@ -210,7 +210,7 @@ details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
 .conf p{font-size:13px;color:var(--ink);margin:6px 0 10px}
 .conf div{display:flex;gap:8px;justify-content:flex-end}
 .btn.danger{background:var(--bad);border-color:var(--bad);color:#fff}
-.rev{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:20}
+.rev{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:100}
 .revc{background:var(--paper);border:2px solid var(--warn);border-radius:14px;padding:16px;max-width:480px;width:100%;max-height:80vh;overflow:auto}
 .revl{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-top:1px solid var(--line);font-size:14px}
 .revl small{color:var(--muted)}
@@ -944,6 +944,7 @@ function abreFornecedores(id, op){
   $("forAuto").style.display = op.novo ? "none" : "";
   $("forSub").textContent = op.novo ? "Artigo novo — escolhe o fornecedor e quantos volumes." : `Sugestão: ${l.sug} vol de ${l.V} ${l.V>1?'maços':'un.'} · quantos volumes a cada fornecedor?`;
   desenhaFor();
+  if (op.pesquisa) $("res").hidden = true;                    // a lista da procura não fica por cima da janela
   $("forM").style.display = "flex";
 }
 function desenhaFor(){
@@ -972,7 +973,7 @@ $("forAdd").onclick = () => { const f = $("forOutro").value; if (f && forEd) { f
 function descartaNovo(){
   if (forEd && forEd.op && forEd.op.novo) { const p = pedAtual(), id = forEd.id; p.novos = p.novos.filter(n=>n.id!==id); ART = ART.filter(a=>a.id!==id); gravaEst(); }
 }
-$("forNao").onclick = () => { descartaNovo(); $("forM").style.display = "none"; forEd = null; };
+$("forNao").onclick = () => { descartaNovo(); $("forM").style.display = "none"; forEd = null; $("res").hidden = false; };
 document.addEventListener("keydown", ev => {
   if ($("forM").style.display !== "flex") return;
   if (ev.key === "Escape") $("forNao").onclick();
@@ -982,7 +983,7 @@ $("forAuto").onclick = () => {
   if (forEd.op && forEd.op.novo) { toast("Artigo novo: escolhe um fornecedor"); return; }
   const p = pedAtual(), id = forEd.id;
   delete p.rep[id]; delete p.forn[id];
-  $("forM").style.display = "none"; forEd = null; gravaEst(); render(); toast("Fornecedor automático (o mais barato)");
+  $("forM").style.display = "none"; forEd = null; $("res").hidden = false; gravaEst(); render(); toast("Fornecedor automático (o mais barato)");
 };
 $("forSim").onclick = () => {
   const p = pedAtual(), e = forEd, tot = Object.values(e.dist).reduce((s,v)=>s+v,0);
@@ -1001,7 +1002,7 @@ $("forSim").onclick = () => {
     if (a && filtro!=="Todos" && filtro!==a.familia) filtro = a.familia;
     fornSel = null; $("procura").value = ""; $("res").innerHTML = "";
   }
-  $("forM").style.display = "none"; forEd = null; gravaEst(); render();
+  $("forM").style.display = "none"; forEd = null; $("res").hidden = false; gravaEst(); render();
   if (e.op && e.op.pesquisa) try { $("procura").focus(); } catch(_){}
   toast(usados.length > 1 ? "Repartido: " + usados.map(([f,v])=>v+" "+f).join(" + ") : usados.length ? "Passado para " + usados[0][0] : "Fica a 0");
 };
