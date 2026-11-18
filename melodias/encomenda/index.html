@@ -145,6 +145,8 @@ header{display:flex;flex-wrap:nowrap;align-items:flex-start;justify-content:spac
 .arvB{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
 .arvF{display:inline-flex;align-items:center;gap:4px;padding:2px 3px 2px 10px;border-radius:999px;border:1.5px solid var(--c);background:var(--soft);font-size:13px}
 .arvF i{width:8px;height:8px;border-radius:50%;background:var(--c);margin-right:2px}
+.arvP{color:var(--muted);font-size:11.5px;font-family:var(--mono)}
+.arvMais{color:var(--warn)}.arvBar{color:#3fae73}
 .arvF b{min-width:18px;text-align:center;font:600 14px var(--mono)}
 .arvF button{width:28px;height:28px;border-radius:999px;border:1px solid var(--line);background:var(--paper);color:var(--ink);font-size:15px;line-height:1;cursor:pointer;padding:0}
 .arvAdd{border:1px dashed var(--line);background:transparent;color:var(--accent);border-radius:999px;padding:5px 12px;font:600 12.5px var(--body);cursor:pointer}
@@ -733,8 +735,8 @@ function arvoreHTML(pedir, so){
         const id = x.l.id, mx = p.aj[id] || p.rep[id];
         const fora = FORNS_LISTA.filter(f => f !== "Rangel" && !(f in x.r));
         h += `<div class="item arvA ${mx?'mud':''}" data-id="${esc(id)}"><div class="arvN">${esc(x.l.artigo)} <small>${x.t} vol${mx?' · alterado à mão':''}</small></div><div class="arvB">` +
-          Object.entries(x.r).map(([f,v])=>`<span class="arvF" style="--c:${cor(f)}"><i></i>${esc(f)} <button data-av="${esc(id)}" data-af="${esc(f)}" data-ad="-1" aria-label="menos">−</button><b>${v}</b><button data-av="${esc(id)}" data-af="${esc(f)}" data-ad="1" aria-label="mais">+</button></span>`).join("") +
-          (arvAdd === id ? `<select class="arvSel" data-asel="${esc(id)}"><option value="">escolher fornecedor…</option>${fora.map(f=>`<option>${esc(f)}</option>`).join("")}</select>`
+          Object.entries(x.r).map(([f,v])=>`<span class="arvF" style="--c:${cor(f)}"><i></i>${esc(f)}${precoArv(x.l,f)} <button data-av="${esc(id)}" data-af="${esc(f)}" data-ad="-1" aria-label="menos">−</button><b>${v}</b><button data-av="${esc(id)}" data-af="${esc(f)}" data-ad="1" aria-label="mais">+</button></span>`).join("") +
+          (arvAdd === id ? `<select class="arvSel" data-asel="${esc(id)}"><option value="">escolher fornecedor…</option>${fora.map(f=>{ const c=(x.l.forns||[]).find(z=>z[0]===f); return `<option value="${esc(f)}">${esc(f)} — ${c&&c[1]!=null?eur(c[1],3):'sem preço'}</option>`; }).join("")}</select>`
                          : (fora.length ? `<button class="arvAdd" data-aadd="${esc(id)}">+ fornecedor</button>` : "")) +
           `</div></div>`;
       }
@@ -743,6 +745,13 @@ function arvoreHTML(pedir, so){
     h += `</div>`;
   }
   return h;
+}
+// preço por maço do fornecedor no ramo, e a diferença para o mais barato
+function precoArv(l, f){
+  const c = (l.forns||[]).find(z=>z[0]===f), best = l.forns && l.forns[0] ? l.forns[0][1] : null;
+  if (!c || c[1]==null) return ` <small class="arvP">sem preço</small>`;
+  const d = best!=null ? c[1]-best : 0;
+  return ` <small class="arvP">${eur(c[1],3)}${d>=0.001 ? ` <span class="arvMais">+${(d*100).toFixed(1).replace(".",",")} cênt.</span>` : ` <span class="arvBar">✓ mais barato</span>`}</small>`;
 }
 // muda os volumes de um artigo por fornecedor (o mesmo que a janela do duplo clique)
 function poeDist(id, dist){
