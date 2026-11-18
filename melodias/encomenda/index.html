@@ -287,6 +287,9 @@ details.opc p{font-size:12.5px;color:var(--muted);margin:8px 0 0}
     <p><b>Média 4 semanas</b>: olha para o habitual. <b>Desde a última encomenda</b>: repõe exatamente o que se vendeu desde a encomenda anterior (domingo: de quarta às 19h a domingo às 19h; quarta: de domingo às 19h a quarta às 19h).</p>
     <div class="seg" id="picos"><button data-v="ignorar" class="on">Ignorar picos</button><button data-v="incluir">Incluir picos</button></div>
     <p><b>Picos</b>: dias em que uma marca vendeu pelo menos 20 maços e mais do triplo do normal (alguém levou vários volumes). Por defeito o excesso não conta.</p>
+    <div class="famT">Repartir pelos fornecedores (Mid Sid, Valente &amp; Neto, Bel)</div>
+    <div class="seg" id="repartir"><button data-v="barato">Só o mais barato</button><button data-v="pref" class="on">Mais ao mais barato</button><button data-v="igual">Dividir por 3</button></div>
+    <p id="repInfo">Só reparte pelos que vendem a marca. "Mais ao mais barato": o mais barato leva metade, os outros o resto. Marcas com 1 volume vão rodando, dando mais vezes ao mais barato.</p>
     <div class="famT">Stock do Sage</div>
     <div class="seg" id="stockUso"><button data-v="menos" class="on">Usar só para pedir menos</button><button data-v="off">Não usar</button></div>
     <div class="seg" id="margem" style="margin-top:6px"><button data-v="0">Margem 0 dias</button><button data-v="1" class="on">1 dia</button><button data-v="2">2 dias</button></div>
@@ -456,7 +459,7 @@ let enc = null, filtro = "Tabaco Novidade", fornSel = null, verZeros = false, so
 let est = lerEst();
 est.ordem = est.ordem || "alfa"; est.base = est.base || "periodo"; est.picos = est.picos || "ignorar";
 // stock do Sage (17/11): por agora só serve para pedir MENOS; margem = dias de vendas que ficam na prateleira
-est.stock = est.stock || "menos"; if (![0,1,2].includes(est.margem)) est.margem = 1;
+est.stock = est.stock || "menos"; est.repartir = est.repartir || "pref"; if (![0,1,2].includes(est.margem)) est.margem = 1;
 // a Ana pediu (15/11): por defeito "Desde a última encomenda" — aplica uma vez a quem já tinha a página aberta
 if (est.baseV !== 2) { est.base = "periodo"; est.baseV = 2; }
 // famílias que entram na encomenda (pedido 15/11: por defeito só Tabaco Novidade + Tabaco RYO)
@@ -632,20 +635,35 @@ function divide(l){
   }
   if (l.vol < 1 || l.urg || l.escolhido || l.manual || !l.forns || l.forns.length < 2 || l.custo == null) return [l];
   const min = l.forns[0][1];
-  const emp = l.forns.filter(f => f[1] - min < 0.001);
+  // repartir pelos 3 principais (Opções): "barato" = só o mais barato (empates divididos), "pref" = mais ao mais barato, "igual" = partes iguais
+  let modo = est.repartir, emp = null;
+  if (modo !== "barato" && TRES.includes(l.forns[0][0])) emp = l.forns.filter(f => TRES.includes(f[0]) && f[1] != null);
+  if (!emp || emp.length < 2) { emp = l.forns.filter(f => f[1] - min < 0.001); modo = "igual"; }
   if (emp.length < 2) return [l];
-  const k = emp.length, base = Math.floor(l.vol / k), extra = l.vol % k;
+  const k = emp.length;
+  const w = emp.map((f,i) => modo === "pref" ? (i === 0 ? 2 : 1) : 1), W = w.reduce((t,x)=>t+x,0);
+  const quota = w.map(x => l.vol * x / W), dist = quota.map(Math.floor);
+  let resta = l.vol - dist.reduce((t,x)=>t+x,0);
   let h = 0; for (const c of l.id) h = (h*31 + c.charCodeAt(0)) >>> 0;
-  const off = (Math.round(D(enc).getTime()/864e5) + h) % k;   // quem leva o volume a mais vai rodando
+  const bilhetes = []; w.forEach((x,i) => { for (let j=0;j<x;j++) bilhetes.push(i); });   // o mais barato tem mais "bilhetes"
+  let pos = (Math.round(D(enc).getTime()/864e5) + h) % bilhetes.length;          // quem leva o que sobra vai rodando
+  const levou = new Set();
+  for (let g = 0; resta > 0 && g < bilhetes.length*3; g++, pos = (pos+1) % bilhetes.length) {
+    const i = bilhetes[pos]; if (levou.has(i)) continue;
+    dist[i]++; levou.add(i); resta--;
+  }
   const out = [];
   emp.forEach((f,i) => {
-    const v = base + (((i - off + k) % k) < extra ? 1 : 0);
+    const v = dist[i];
     if (v > 0) out.push({...l, vol:v, forn:f[0], custo:f[1], mg: l.pvp ? (l.pvp-f[1])/l.pvp*100 : null,
-      parte:{total:l.vol, com: emp.filter(x=>x[0]!==f[0]).map(x=>x[0])},
-      tags:[...l.tags, ["new", "dividido com " + emp.filter(x=>x[0]!==f[0]).map(x=>x[0]).join(", ")]]});
+      parte:{total:l.vol, com: emp.filter((x,j)=>j!==i && dist[j]>0).map(x=>x[0])},
+      tags:[...l.tags, ...(emp.some((x,j)=>j!==i && dist[j]>0) ? [["new", "dividido com " + emp.filter((x,j)=>j!==i && dist[j]>0).map(x=>x[0]).join(", ")]] : [])]});
   });
   return out.length ? out : [l];
 }
+const TRES = ["Mid Sid","Valente & Neto","Bel"];
+// quanto custa a mais repartir, em relação a pedir tudo ao mais barato (só a repartição automática)
+const custoRepartir = div => div.reduce((t,l) => t + ((l.repar || l.urg || l.escolhido || l.manual || !l.forns || !l.forns[0] || l.custo==null) ? 0 : l.vol*(l.V||1)*(l.custo - l.forns[0][1])), 0);
 const valor = l => l.vol * (l.V||1) * (l.custo ?? (l.pvp ? l.pvp*0.93 : 0));
 const ordena = arr => est.ordem==="alfa" ? arr.sort((a,b)=>a.artigo.localeCompare(b.artigo,"pt")) : arr.sort((a,b)=>b.b-a.b || a.artigo.localeCompare(b.artigo,"pt"));
 function alt(l){
@@ -700,7 +718,7 @@ function render(){
   const p = pedAtual();
   const emFat = $("app").classList.contains("modoFat");
   $("encomenda").innerHTML = ENCS.map(e=>`<button data-v="${e}" class="${e===enc&&!emFat?'on':''}">${dow(e)===0?'Domingo':'Quarta'} ${dm(e)}${CORTE && e<HOJE?' ✓':''}</button>`).join("");
-  segOn("ordem",est.ordem); segOn("base",est.base); segOn("picos",est.picos); segOn("stockUso",est.stock); segOn("margem",String(est.margem));
+  segOn("ordem",est.ordem); segOn("base",est.base); segOn("picos",est.picos); segOn("stockUso",est.stock); segOn("repartir",est.repartir); segOn("margem",String(est.margem));
   const j0 = janela(enc,0), comeca = j0[0] <= HOJE, jUse = comeca ? j0 : janela(enc,1), parcial = jUse[jUse.length-1] >= HOJE;
   $("periodo").innerHTML = `Repõe as vendas de <b>${ini(jUse[0])}</b> a <b>${fim(jUse[jUse.length-1])}</b>${comeca?'':' (semana passada)'}${CORTE?` · pronta às ${CORTE}h de ${dow(enc)===0?'domingo':'quarta'}`:''}`;
   $("aviso").innerHTML = (!comeca
@@ -711,6 +729,8 @@ function render(){
       : `<div class="aviso">A <b>EuroNovidades</b> é só ao domingo: para ela, esta encomenda repõe a semana inteira (de domingo a domingo, às ${CORTE||19}h).</div>`);
 
   const linhas = artsEnc().map(calcula);
+  const extraRep = custoRepartir(linhas.filter(l=>l.vol>0).flatMap(divide));
+  if (est.repartir !== "barato" && extraRep >= 0.5) $("aviso").innerHTML += `<div class="aviso">⚖️ <b>Repartido pelos fornecedores</b> (${est.repartir==="igual"?"dividir por 3":"mais ao mais barato"}): custa <b>+${eur0(extraRep)}</b> nesta encomenda em relação a pedir tudo ao mais barato.</div>`;
   const nCorta = linhas.filter(l=>l.stk&&l.stk.corta), nRever = linhas.filter(l=>l.stk&&l.stk.rever&&l.w.some(x=>x>0)).length;
   if (nCorta.length || nRever) $("aviso").innerHTML += `<div class="aviso">📦 <b>Stock do Sage</b>: ${est.stock==="off" ? "não está a ser usado (Opções)." : `${nCorta.length} artigo${nCorta.length===1?'':'s'} pede${nCorta.length===1?'':'m'} menos porque há stock (−${nCorta.reduce((t,l)=>t+l.stk.sugV-l.sug,0)} vol, margem ${est.margem} dia${est.margem===1?'':'s'}).`} ${nRever} com stock negativo — não conta, fica pelas vendas.</div>`;
   famUI();
@@ -860,6 +880,7 @@ $("fatV").onclick = e => {
 $("ordem").onclick = e => { const b=e.target.closest("button"); if(!b) return; est.ordem=b.dataset.v; gravaEst(); render(); };
 $("base").onclick = e => { const b=e.target.closest("button"); if(!b) return; est.base=b.dataset.v; gravaEst(); render(); };
 $("picos").onclick = e => { const b=e.target.closest("button"); if(!b) return; est.picos=b.dataset.v; gravaEst(); render(); };
+$("repartir").onclick = e => { const b=e.target.closest("button"); if(!b) return; est.repartir=b.dataset.v; gravaEst(); render(); };
 $("stockUso").onclick = e => { const b=e.target.closest("button"); if(!b) return; est.stock=b.dataset.v; gravaEst(); render(); };
 $("margem").onclick = e => { const b=e.target.closest("button"); if(!b) return; est.margem=+b.dataset.v; gravaEst(); render(); };
 $("familias").onclick = e => { const c=e.target.closest(".chip"); if(!c) return; filtro=c.dataset.v; fornSel=null; verZeros=false; render(); };
