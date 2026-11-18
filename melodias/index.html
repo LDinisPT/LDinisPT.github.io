@@ -382,6 +382,13 @@ function tickStatus() {
   }
   $("status").innerHTML = txt;
   $("status").classList.toggle("stale", min > 15);
+  // contador chegou a 0: vai buscar logo, e repete de 10 em 10 s ate chegarem dados novos
+  let devido = Date.now() >= proxR.getTime();
+  if (window._talTs && Date.now() >= window._talTs.getTime() + 15 * 60000) devido = true;
+  if (devido && min <= 15 && !document.hidden && Date.now() - (window._ultPedido || 0) > 10000) {
+    window._ultPedido = Date.now();
+    load();
+  }
 }
 
 function delta(cur, ref) {
